@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 import '../theme/app_theme.dart';
 
@@ -12,12 +13,14 @@ enum _SwipeThresholdState { none, used, notUsed }
 
 class ReviewView extends StatefulWidget {
   final List<Item> items;
+  final Currency defaultCurrency;
   final Function(Item item, bool used) onReviewItem;
   final VoidCallback onResetAllReviews;
 
   const ReviewView({
     super.key,
     required this.items,
+    this.defaultCurrency = Currency.defaultCurrency,
     required this.onReviewItem,
     required this.onResetAllReviews,
   });
@@ -283,6 +286,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                         offset: const Offset(0, 26),
                         child: _ReviewCardContent(
                           item: pending[(_currentIndex + 2) % pending.length],
+                          defaultCurrency: widget.defaultCurrency,
                         ),
                       ),
                     ),
@@ -296,6 +300,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                         offset: const Offset(0, 14),
                         child: _ReviewCardContent(
                           item: pending[(_currentIndex + 1) % pending.length],
+                          defaultCurrency: widget.defaultCurrency,
                         ),
                       ),
                     ),
@@ -369,7 +374,10 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              _ReviewCardContent(item: currentItem),
+                              _ReviewCardContent(
+                                item: currentItem,
+                                defaultCurrency: widget.defaultCurrency,
+                              ),
 
                               // "USED" Stamp Overlay when dragging right (Single Fire Orange)
                               if (isSwipingRight)
@@ -527,20 +535,25 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
 
 class _ReviewCardContent extends StatelessWidget {
   final Item item;
+  final Currency defaultCurrency;
 
-  const _ReviewCardContent({required this.item});
+  const _ReviewCardContent({
+    required this.item,
+    this.defaultCurrency = Currency.defaultCurrency,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final effectiveCurrency = item.getEffectiveCurrency(defaultCurrency);
 
     // Predict new cost if used
     final nextUsedDuration = item.usedDurationMonths + 1;
     final currentCostPerMo = item.usedDurationMonths > 0
-        ? '${item.usedPricePerMonth.toStringAsFixed(2)} €/mo'
+        ? effectiveCurrency.formatMonthly(item.usedPricePerMonth)
         : 'N/A';
-    final newCostPerMo = '${(item.price / nextUsedDuration).toStringAsFixed(2)} €/mo';
+    final newCostPerMo = effectiveCurrency.formatMonthly(item.price / nextUsedDuration);
 
     return Card(
       elevation: 3,
@@ -592,7 +605,7 @@ class _ReviewCardContent extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${item.price.toStringAsFixed(2)} €',
+                            effectiveCurrency.format(item.price),
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: null,
@@ -640,7 +653,7 @@ class _ReviewCardContent extends StatelessWidget {
                                 Text('Goal duration:', style: theme.textTheme.bodyMedium),
                                 Flexible(
                                   child: Text(
-                                    '${item.goalDurationMonths} mo (${item.goalPricePerMonth.toStringAsFixed(2)} €/mo)',
+                                    '${item.goalDurationMonths} mo (${effectiveCurrency.formatMonthly(item.goalPricePerMonth)})',
                                     textAlign: TextAlign.end,
                                     style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),

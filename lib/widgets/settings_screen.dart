@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../models/currency.dart';
+import 'currency_picker_dialog.dart';
+
 class SettingsScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final bool showSegmentedProgressBar;
   final ValueChanged<bool> onSegmentedProgressBarChanged;
+  final Currency currentCurrency;
+  final ValueChanged<Currency> onCurrencyChanged;
   final VoidCallback onManageCategories;
 
   const SettingsScreen({
@@ -13,6 +18,8 @@ class SettingsScreen extends StatefulWidget {
     required this.onThemeModeChanged,
     required this.showSegmentedProgressBar,
     required this.onSegmentedProgressBarChanged,
+    required this.currentCurrency,
+    required this.onCurrencyChanged,
     required this.onManageCategories,
   });
 
@@ -23,12 +30,29 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showSegmentedProgressBar;
   late ThemeMode _themeMode;
+  late Currency _currentCurrency;
 
   @override
   void initState() {
     super.initState();
     _showSegmentedProgressBar = widget.showSegmentedProgressBar;
     _themeMode = widget.themeMode;
+    _currentCurrency = widget.currentCurrency;
+  }
+
+  void _openCurrencyPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => CurrencyPickerDialog(
+        currentCurrency: _currentCurrency,
+        onSelected: (currency) {
+          setState(() {
+            _currentCurrency = currency;
+          });
+          widget.onCurrencyChanged(currency);
+        },
+      ),
+    );
   }
 
   @override
@@ -46,9 +70,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const SizedBox(height: 8),
 
-          // APPEARANCE SECTION
+          // CURRENCY SECTION
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'CURRENCY',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.currency_exchange),
+            title: const Text('Default Currency'),
+            subtitle: Text('${_currentCurrency.name} • Preview: ${_currentCurrency.format(100)}'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openCurrencyPicker,
+          ),
+
+          const Divider(height: 1),
+
+          // APPEARANCE SECTION
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Text(
               'APPEARANCE & THEME',
               style: theme.textTheme.labelMedium?.copyWith(

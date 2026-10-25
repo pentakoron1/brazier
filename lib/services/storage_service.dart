@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 
 class StorageService {
@@ -9,6 +10,7 @@ class StorageService {
   static const String _itemsKey = 'brazier_items_v1';
   static const String _themeModeKey = 'brazier_theme_mode_v1';
   static const String _segmentedProgressKey = 'brazier_segmented_progress_v1';
+  static const String _currencyKey = 'brazier_currency_v1';
 
   /// Saves the list of categories to SharedPreferences.
   static Future<void> saveCategories(List<Category> categories) async {
@@ -85,5 +87,67 @@ class StorageService {
   static Future<bool> loadSegmentedProgressBar() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_segmentedProgressKey) ?? true;
+  }
+
+  static const String _customCurrenciesKey = 'brazier_custom_currencies_v1';
+
+  /// Saves the list of user-created custom currencies.
+  static Future<void> saveCustomCurrencies(List<Currency> customCurrencies) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = customCurrencies.map((c) => c.toJson()).toList();
+    await prefs.setString(_customCurrenciesKey, jsonEncode(jsonList));
+  }
+
+  /// Loads user-created custom currencies.
+  static Future<List<Currency>> loadCustomCurrencies() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_customCurrenciesKey);
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+    try {
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList
+          .map((item) => Currency.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Adds a custom currency if not already present.
+  static Future<List<Currency>> addCustomCurrency(Currency currency) async {
+    final existing = await loadCustomCurrencies();
+    final isPreset = Currency.presetCurrencies.any(
+      (p) => p.code == currency.code && p.symbol == currency.symbol,
+    );
+    if (!isPreset && !existing.contains(currency)) {
+      final updated = [...existing, currency];
+      await saveCustomCurrencies(updated);
+      return updated;
+    }
+    return existing;
+  }
+
+  /// Saves the default app currency setting.
+  static Future<void> saveCurrency(Currency currency) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencyKey, jsonEncode(currency.toJson()));
+    await addCustomCurrency(currency);
+  }
+
+  /// Loads the default app currency setting.
+  static Future<Currency> loadCurrency() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_currencyKey);
+    if (jsonString == null || jsonString.isEmpty) {
+      return Currency.defaultCurrency;
+    }
+    try {
+      final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+      return Currency.fromJson(jsonMap);
+    } catch (_) {
+      return Currency.defaultCurrency;
+    }
   }
 }

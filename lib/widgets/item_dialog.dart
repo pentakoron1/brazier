@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 import 'category_manager_dialog.dart';
+import 'currency_picker_dialog.dart';
 
 class ItemDialog extends StatefulWidget {
   final Item? item;
   final List<Category> categories;
+  final Currency defaultCurrency;
   final ValueChanged<Item> onSave;
   final ValueChanged<Category>? onAddCategory;
   final ValueChanged<Category>? onUpdateCategory;
@@ -15,6 +18,7 @@ class ItemDialog extends StatefulWidget {
     super.key,
     this.item,
     required this.categories,
+    this.defaultCurrency = Currency.defaultCurrency,
     required this.onSave,
     this.onAddCategory,
     this.onUpdateCategory,
@@ -34,6 +38,7 @@ class _ItemDialogState extends State<ItemDialog> {
   late TextEditingController _usedDurationController;
   late Category _selectedCategory;
   late bool _isDefaultUsed;
+  Currency? _itemCurrency;
 
   @override
   void initState() {
@@ -59,11 +64,14 @@ class _ItemDialogState extends State<ItemDialog> {
 
     _selectedCategory = initialCategory;
     _isDefaultUsed = item?.isDefaultUsed ?? false;
+    _itemCurrency = item?.currency;
 
     _priceController.addListener(_updateCalculations);
     _goalDurationController.addListener(_updateCalculations);
     _usedDurationController.addListener(_updateCalculations);
   }
+
+  Currency get _effectiveCurrency => _itemCurrency ?? widget.defaultCurrency;
 
   void _updateCalculations() {
     setState(() {});
@@ -116,6 +124,20 @@ class _ItemDialogState extends State<ItemDialog> {
     }
   }
 
+  void _openCurrencyPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => CurrencyPickerDialog(
+        currentCurrency: _effectiveCurrency,
+        onSelected: (selected) {
+          setState(() {
+            _itemCurrency = selected;
+          });
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -147,6 +169,7 @@ class _ItemDialogState extends State<ItemDialog> {
         lastReviewedMonthKey: widget.item?.lastReviewedMonthKey,
         currentMonthUsed: widget.item?.currentMonthUsed,
         isDefaultUsed: _isDefaultUsed,
+        currency: _itemCurrency,
       );
 
       widget.onSave(newItem);
@@ -160,6 +183,7 @@ class _ItemDialogState extends State<ItemDialog> {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     final isGoalReached = _currentUsedDuration >= _currentGoalDuration && _currentGoalDuration > 0;
+    final effCurrency = _effectiveCurrency;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -225,26 +249,63 @@ class _ItemDialogState extends State<ItemDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Price field
-                      TextFormField(
-                        controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Price (€)',
-                          hintText: 'e.g., 100.00',
-                          prefixIcon: Icon(Icons.euro),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a price';
-                          }
-                          final num = double.tryParse(value);
-                          if (num == null || num < 0) {
-                            return 'Please enter a valid positive price';
-                          }
-                          return null;
-                        },
+                      // Price field & Currency selection
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TextFormField(
+                              controller: _priceController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'Price (${effCurrency.symbol})',
+                                hintText: 'e.g., 100.00',
+                                prefixText: '${effCurrency.symbol} ',
+                                prefixStyle: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                border: const OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter a price';
+                                }
+                                final num = double.tryParse(value);
+                                if (num == null || num < 0) {
+                                  return 'Please enter a valid positive price';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              onPressed: _openCurrencyPickerDialog,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    effCurrency.code,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('(${effCurrency.symbol})'),
+                                  const Icon(Icons.arrow_drop_down, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 
@@ -446,7 +507,7 @@ class _ItemDialogState extends State<ItemDialog> {
                                   style: theme.textTheme.bodyMedium,
                                 ),
                                 Text(
-                                  '${_goalPricePerMonth.toStringAsFixed(2)} €/mo',
+                                  effCurrency.formatMonthly(_goalPricePerMonth),
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: theme.colorScheme.primary,
@@ -464,7 +525,7 @@ class _ItemDialogState extends State<ItemDialog> {
                                 ),
                                 Text(
                                   _currentUsedDuration > 0
-                                      ? '${_usedPricePerMonth.toStringAsFixed(2)} €/mo'
+                                      ? effCurrency.formatMonthly(_usedPricePerMonth)
                                       : 'N/A (0 months)',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,

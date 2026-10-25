@@ -1,0 +1,43 @@
+Categories:
+  - Finance Manager
+  - Inventory
+  - Wallet
+License: GPL-3.0-only
+AuthorName: Pentakoron
+SourceCode: https://github.com/pentakoron1/brazier
+IssueTracker: https://github.com/pentakoron1/brazier/issues
+Changelog: https://github.com/pentakoron1/brazier/releases
+
+AutoName: Brazier
+
+RepoType: git
+Repo: https://github.com/pentakoron1/brazier.git
+
+Builds:
+  - versionName: 1.0.4
+    versionCode: 4
+    commit: b8e363f2edf967e79cf3e058dd3751cef464ca36
+    output: build/app/outputs/flutter-apk/app-release.apk
+    srclibs:
+      - flutter@3.47.7
+    rm:
+      - ios
+      - linux
+      - macos
+      - web
+      - windows
+    prebuild:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --build-name=$$VERSION$$ --build-number=$$VERCODE$$
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
+CurrentVersion: 1.0.4
+CurrentVersionCode: 4

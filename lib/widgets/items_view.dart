@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 import 'item_card.dart';
 
@@ -9,6 +10,7 @@ typedef ReorderCallback = void Function(int oldIndex, int newIndex);
 class ItemsView extends StatefulWidget {
   final List<Item> items;
   final List<Category> categories;
+  final Currency defaultCurrency;
   final String searchQuery;
   final Category? selectedCategoryFilter;
   final bool showOnlyGoalReached;
@@ -25,6 +27,7 @@ class ItemsView extends StatefulWidget {
     super.key,
     required this.items,
     required this.categories,
+    this.defaultCurrency = Currency.defaultCurrency,
     required this.searchQuery,
     required this.selectedCategoryFilter,
     required this.showOnlyGoalReached,
@@ -49,6 +52,7 @@ class _ItemsViewState extends State<ItemsView> {
     return _isCompactView
         ? CompactItemCard(
             item: item,
+            defaultCurrency: widget.defaultCurrency,
             showSegmentedProgressBar: widget.showSegmentedProgressBar,
             onEdit: () => widget.onEditItem(item),
             onDelete: () => widget.onDeleteItem(item.id),
@@ -57,6 +61,7 @@ class _ItemsViewState extends State<ItemsView> {
           )
         : ItemCard(
             item: item,
+            defaultCurrency: widget.defaultCurrency,
             showSegmentedProgressBar: widget.showSegmentedProgressBar,
             onEdit: () => widget.onEditItem(item),
             onDelete: () => widget.onDeleteItem(item.id),

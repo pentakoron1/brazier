@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 import '../theme/app_theme.dart';
 
 const Color fireOrange = AppColors.fireOrange; // Single unified Fire Orange Accent from AppTheme
+
 /// Label + bar + value. Switches to a stacked layout when space is tight.
 class _MetricRow extends StatelessWidget {
   final String label;
@@ -59,16 +61,19 @@ class _MetricRow extends StatelessWidget {
     );
   }
 }
+
 class ItemsDetailScreen extends StatelessWidget {
   final String title;
   final List<Item> items;
   final Category? category;
+  final Currency defaultCurrency;
 
   const ItemsDetailScreen({
     super.key,
     required this.title,
     required this.items,
     this.category,
+    this.defaultCurrency = Currency.defaultCurrency,
   });
 
   @override
@@ -123,6 +128,7 @@ class ItemsDetailScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = items[index];
                 final cat = item.category;
+                final effectiveCurrency = item.getEffectiveCurrency(defaultCurrency);
 
                 // Total Price ratio (scaled to maxPrice)
                 final priceRatio = maxPrice > 0 ? (item.price / maxPrice).clamp(0.05, 1.0) : 0.0;
@@ -206,7 +212,7 @@ class ItemsDetailScreen extends StatelessWidget {
                                   top: 0,
                                   child: Tooltip(
                                     message:
-                                    'Target Goal (${item.goalDurationMonths} mo): ${item.goalPricePerMonth.toStringAsFixed(2)} €/mo',
+                                        'Target Goal (${item.goalDurationMonths} mo): ${effectiveCurrency.formatMonthly(item.goalPricePerMonth)}',
                                     child: Container(
                                       width: 8,
                                       height: 8,
@@ -230,7 +236,7 @@ class ItemsDetailScreen extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header row (unchanged)
+                          // Header row
                           Row(
                             children: [
                               CircleAvatar(
@@ -266,7 +272,7 @@ class ItemsDetailScreen extends StatelessWidget {
                           _MetricRow(
                             compact: compact,
                             label: 'Total Price:',
-                            value: '${item.price.toStringAsFixed(2)} €',
+                            value: effectiveCurrency.format(item.price),
                             labelStyle: labelStyle,
                             valueStyle: TextStyle(
                               fontWeight: FontWeight.bold,
@@ -280,9 +286,11 @@ class ItemsDetailScreen extends StatelessWidget {
                           _MetricRow(
                             compact: compact,
                             label: 'Monthly Cost:',
-                            value: item.usedDurationMonths > 0
-                                ? '${item.usedPricePerMonth.toStringAsFixed(2)} €/mo'
-                                : '${item.goalPricePerMonth.toStringAsFixed(2)} €/mo',
+                            value: effectiveCurrency.formatMonthly(
+                              item.usedDurationMonths > 0
+                                  ? item.usedPricePerMonth
+                                  : item.goalPricePerMonth,
+                            ),
                             labelStyle: labelStyle,
                             valueStyle: TextStyle(
                               fontWeight: FontWeight.bold,

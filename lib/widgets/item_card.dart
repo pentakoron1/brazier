@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 import '../theme/app_theme.dart';
 
@@ -152,6 +153,7 @@ class SteppedProgressBar extends StatelessWidget {
 
 class ItemCard extends StatelessWidget {
   final Item item;
+  final Currency defaultCurrency;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final ValueChanged<MonthlyReviewStatus> onUpdateMonthlyStatus;
@@ -160,6 +162,7 @@ class ItemCard extends StatelessWidget {
   const ItemCard({
     super.key,
     required this.item,
+    this.defaultCurrency = Currency.defaultCurrency,
     required this.onEdit,
     required this.onDelete,
     required this.onUpdateMonthlyStatus,
@@ -172,6 +175,7 @@ class ItemCard extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
     final isGoalReached = item.isGoalReached;
     final monthlyStatus = item.currentMonthlyStatus;
+    final effectiveCurrency = item.getEffectiveCurrency(defaultCurrency);
 
     // All cards look identical regardless of goal completed or not
     final cardBgColor = isDarkMode ? const Color(0xFF1C222D) : theme.colorScheme.surface;
@@ -473,7 +477,7 @@ class ItemCard extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        '${item.price.toStringAsFixed(2)} €',
+                        effectiveCurrency.format(item.price),
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           fontSize: 17,
@@ -523,7 +527,7 @@ class ItemCard extends StatelessWidget {
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                '${item.goalPricePerMonth.toStringAsFixed(2)} € / mo',
+                                effectiveCurrency.format(item.goalPricePerMonth, showMonthly: true),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -571,7 +575,7 @@ class ItemCard extends StatelessWidget {
                               alignment: Alignment.centerLeft,
                               child: Text(
                                 item.usedDurationMonths > 0
-                                    ? '${item.usedPricePerMonth.toStringAsFixed(2)} € / mo'
+                                    ? effectiveCurrency.format(item.usedPricePerMonth, showMonthly: true)
                                     : 'N/A',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
@@ -640,6 +644,7 @@ class ItemCard extends StatelessWidget {
 
 class CompactItemCard extends StatelessWidget {
   final Item item;
+  final Currency defaultCurrency;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final ValueChanged<MonthlyReviewStatus> onUpdateMonthlyStatus;
@@ -648,6 +653,7 @@ class CompactItemCard extends StatelessWidget {
   const CompactItemCard({
     super.key,
     required this.item,
+    this.defaultCurrency = Currency.defaultCurrency,
     required this.onEdit,
     required this.onDelete,
     required this.onUpdateMonthlyStatus,
@@ -659,6 +665,7 @@ class CompactItemCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     final monthlyStatus = item.currentMonthlyStatus;
+    final effectiveCurrency = item.getEffectiveCurrency(defaultCurrency);
 
     final cardBgColor = isDarkMode ? const Color(0xFF1C222D) : theme.colorScheme.surface;
     final cardBorderColor = isDarkMode ? const Color(0xFF2B3342) : theme.colorScheme.outlineVariant;
@@ -834,7 +841,7 @@ class CompactItemCard extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '${item.price.toStringAsFixed(2)} €',
+                    effectiveCurrency.format(item.price),
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -890,7 +897,7 @@ class CompactItemCard extends StatelessWidget {
                     // Used Price per Month
                     Text(
                       item.usedDurationMonths > 0
-                          ? '${item.usedPricePerMonth.toStringAsFixed(2)} €/mo'
+                          ? effectiveCurrency.formatMonthly(item.usedPricePerMonth)
                           : 'N/A',
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.bold,

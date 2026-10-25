@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/currency.dart';
 import '../models/item.dart';
 import '../theme/app_theme.dart';
 import 'items_detail_screen.dart';
@@ -10,10 +11,12 @@ const Color fireOrange = AppColors.fireOrange; // Single unified Fire Orange Acc
 
 class StatisticsView extends StatelessWidget {
   final List<Item> items;
+  final Currency defaultCurrency;
 
   const StatisticsView({
     super.key,
     required this.items,
+    this.defaultCurrency = Currency.defaultCurrency,
   });
 
   void _navigateToDetailSubpage(
@@ -28,6 +31,7 @@ class StatisticsView extends StatelessWidget {
           title: title,
           items: subpageItems,
           category: category,
+          defaultCurrency: defaultCurrency,
         ),
       ),
     );
@@ -91,6 +95,7 @@ class StatisticsView extends StatelessWidget {
           // Main Summary Card (Clickable to open subpage with all items)
           SummaryCard(
             items: items,
+            currency: defaultCurrency,
             onTap: () => _navigateToDetailSubpage(
               context,
               'Overview Summary',
@@ -383,7 +388,7 @@ class StatisticsView extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                '${categoryTotal.toStringAsFixed(2)} €',
+                                defaultCurrency.format(categoryTotal),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: catColor,
@@ -416,7 +421,7 @@ class StatisticsView extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                'Goal: ${categoryGoalRate.toStringAsFixed(2)} €/mo',
+                                'Goal: ${defaultCurrency.formatMonthly(categoryGoalRate)}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
@@ -448,7 +453,7 @@ class StatisticsView extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                '${categoryUsedRate.toStringAsFixed(2)} € / mo',
+                                defaultCurrency.format(categoryUsedRate, showMonthly: true),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: null,

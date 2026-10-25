@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'currency.dart';
+
 class Category {
   final String id;
   String displayName;
@@ -127,6 +129,7 @@ class Item {
   bool? currentMonthUsed;
   bool isDefaultUsed;
   int usageStreak;
+  Currency? currency;
 
   Item({
     required this.id,
@@ -139,7 +142,13 @@ class Item {
     this.currentMonthUsed,
     this.isDefaultUsed = false,
     this.usageStreak = 0,
+    this.currency,
   });
+
+  /// Returns the currency for this item, falling back to [defaultCurrency] if not specified.
+  Currency getEffectiveCurrency(Currency defaultCurrency) {
+    return currency ?? defaultCurrency;
+  }
 
   /// Calculates current year-month key string, e.g. "2025-05".
   static String get currentMonthKey {
@@ -214,6 +223,7 @@ class Item {
     bool? currentMonthUsed,
     bool? isDefaultUsed,
     int? usageStreak,
+    Currency? currency,
   }) {
     return Item(
       id: id ?? this.id,
@@ -226,6 +236,7 @@ class Item {
       currentMonthUsed: currentMonthUsed ?? this.currentMonthUsed,
       isDefaultUsed: isDefaultUsed ?? this.isDefaultUsed,
       usageStreak: usageStreak ?? this.usageStreak,
+      currency: currency ?? this.currency,
     );
   }
 
@@ -241,6 +252,7 @@ class Item {
       'currentMonthUsed': currentMonthUsed,
       'isDefaultUsed': isDefaultUsed,
       'usageStreak': usageStreak,
+      if (currency != null) 'currency': currency!.toJson(),
     };
   }
 
@@ -262,6 +274,9 @@ class Item {
       currentMonthUsed: json['currentMonthUsed'] as bool?,
       isDefaultUsed: json['isDefaultUsed'] as bool? ?? false,
       usageStreak: json['usageStreak'] as int? ?? 0,
+      currency: json['currency'] != null
+          ? Currency.fromJson(json['currency'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
