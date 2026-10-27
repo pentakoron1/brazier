@@ -392,14 +392,14 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           ReviewCountdownText(
             style: theme.textTheme.bodySmall?.copyWith(
               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
 
           // Swipe Card Stack Area
           Expanded(
@@ -572,15 +572,8 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Swipe RIGHT if used, LEFT if not used, UP/DOWN to skip.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+
           // Action Buttons Bar
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
