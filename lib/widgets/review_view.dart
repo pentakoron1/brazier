@@ -12,14 +12,21 @@ const Color fireOrange = AppColors.fireOrange; // Single unified Fire Orange Acc
 
 enum _SwipeThresholdState { none, used, notUsed }
 
-class ReviewCountdownBanner extends StatefulWidget {
-  const ReviewCountdownBanner({super.key});
+class ReviewCountdownText extends StatefulWidget {
+  final TextStyle? style;
+  final TextAlign? textAlign;
+
+  const ReviewCountdownText({
+    super.key,
+    this.style,
+    this.textAlign,
+  });
 
   @override
-  State<ReviewCountdownBanner> createState() => _ReviewCountdownBannerState();
+  State<ReviewCountdownText> createState() => _ReviewCountdownTextState();
 }
 
-class _ReviewCountdownBannerState extends State<ReviewCountdownBanner> {
+class _ReviewCountdownTextState extends State<ReviewCountdownText> {
   Timer? _timer;
 
   @override
@@ -63,11 +70,32 @@ class _ReviewCountdownBannerState extends State<ReviewCountdownBanner> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
     final now = DateTime.now();
     final remaining = _nextReviewDate.difference(now);
     final countdownText = _formatCountdown(remaining);
+
+    return Text(
+      countdownText,
+      style: widget.style?.copyWith(
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ) ?? const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+      textAlign: widget.textAlign,
+    );
+  }
+}
+
+class ReviewCountdownBanner extends StatelessWidget {
+  const ReviewCountdownBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final now = DateTime.now();
+    final nextReviewDate = now.month == 12
+        ? DateTime(now.year + 1, 1, 1)
+        : DateTime(now.year, now.month + 1, 1);
+    final remaining = nextReviewDate.difference(now);
     final isLessThanDay = remaining.inDays < 1 && !remaining.isNegative;
 
     return Container(
@@ -95,15 +123,13 @@ class _ReviewCountdownBannerState extends State<ReviewCountdownBanner> {
             color: isLessThanDay ? fireOrange : theme.colorScheme.primary,
           ),
           const SizedBox(width: 6),
-          Text(
-            countdownText,
+          ReviewCountdownText(
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: isLessThanDay
                   ? (isDarkMode ? const Color(0xFFFF9E80) : fireOrange)
                   : theme.colorScheme.onSurface,
-              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
@@ -367,8 +393,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            'Next review in:',
+          ReviewCountdownText(
             style: theme.textTheme.bodySmall?.copyWith(
               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
             ),
