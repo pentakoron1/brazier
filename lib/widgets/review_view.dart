@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,132 @@ import '../theme/app_theme.dart';
 const Color fireOrange = AppColors.fireOrange; // Single unified Fire Orange Accent from AppTheme
 
 enum _SwipeThresholdState { none, used, notUsed }
+
+class ReviewCountdownText extends StatefulWidget {
+  final TextStyle? style;
+  final TextAlign? textAlign;
+
+  const ReviewCountdownText({
+    super.key,
+    this.style,
+    this.textAlign,
+  });
+
+  @override
+  State<ReviewCountdownText> createState() => _ReviewCountdownTextState();
+}
+
+class _ReviewCountdownTextState extends State<ReviewCountdownText> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  DateTime get _nextReviewDate {
+    final now = DateTime.now();
+    return now.month == 12
+        ? DateTime(now.year + 1, 1, 1)
+        : DateTime(now.year, now.month + 1, 1);
+  }
+
+  String _formatCountdown(Duration duration) {
+    if (duration.isNegative || duration == Duration.zero) {
+      return 'Next review is now';
+    }
+
+    if (duration.inDays >= 1) {
+      final days = duration.inDays;
+      return 'Next review in $days ${days == 1 ? 'day' : 'days'}';
+    } else {
+      final hours = duration.inHours.toString().padLeft(2, '0');
+      final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+      final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+      return 'Next review in $hours:$minutes:$seconds';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final remaining = _nextReviewDate.difference(now);
+    final countdownText = _formatCountdown(remaining);
+
+    return Text(
+      countdownText,
+      style: widget.style?.copyWith(
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ) ?? const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+      textAlign: widget.textAlign,
+    );
+  }
+}
+
+class ReviewCountdownBanner extends StatelessWidget {
+  const ReviewCountdownBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final now = DateTime.now();
+    final nextReviewDate = now.month == 12
+        ? DateTime(now.year + 1, 1, 1)
+        : DateTime(now.year, now.month + 1, 1);
+    final remaining = nextReviewDate.difference(now);
+    final isLessThanDay = remaining.inDays < 1 && !remaining.isNegative;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: isLessThanDay
+            ? fireOrange.withValues(alpha: isDarkMode ? 0.2 : 0.12)
+            : (isDarkMode
+                ? const Color(0xFF1E2634)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isLessThanDay
+              ? fireOrange.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLessThanDay ? Icons.timer_outlined : Icons.calendar_today_outlined,
+            size: 15,
+            color: isLessThanDay ? fireOrange : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          ReviewCountdownText(
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isLessThanDay
+                  ? (isDarkMode ? const Color(0xFFFF9E80) : fireOrange)
+                  : theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ReviewView extends StatefulWidget {
   final List<Item> items;
@@ -167,6 +294,8 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+
+              const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -179,7 +308,9 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                   color: fireOrange,
                 ),
               ),
+
               const SizedBox(height: 20),
+
               Text(
                 'All caught up for this month! 🎉',
                 textAlign: TextAlign.center,
@@ -187,6 +318,8 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 12),
+              const ReviewCountdownBanner(),
               const SizedBox(height: 12),
               Text(
                 'You have reviewed all your items for the current month (${Item.currentMonthKey}).\nYour review list will reset next month automatically.',
@@ -200,7 +333,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               OutlinedButton.icon(
                 onPressed: widget.onResetAllReviews,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Reset Monthly Reviews'),
+                label: const Text("Reset This Month's Reviews"),
               ),
             ],
           ),
@@ -233,7 +366,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
             children: [
               Expanded(
                 child: Text(
-                  'Monthly Usage Review',
+                  '${Item.currentMonthKey} Usage Review',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -259,15 +392,14 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Swipe RIGHT if used, LEFT if not used, UP/DOWN to skip.',
+          const SizedBox(height: 8),
+          ReviewCountdownText(
             style: theme.textTheme.bodySmall?.copyWith(
               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
 
           // Swipe Card Stack Area
           Expanded(
@@ -440,7 +572,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
 
           // Action Buttons Bar
           Row(
@@ -627,7 +759,7 @@ class _ReviewCardContent extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Did you use this item during ${Item.currentMonthKey}?',
+                            'Did you use this item this month?',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
