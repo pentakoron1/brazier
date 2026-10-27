@@ -268,7 +268,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const ReviewCountdownBanner(),
+
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(24),
@@ -282,7 +282,9 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                   color: fireOrange,
                 ),
               ),
+
               const SizedBox(height: 20),
+
               Text(
                 'All caught up for this month! 🎉',
                 textAlign: TextAlign.center,
@@ -290,6 +292,8 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 12),
+              const ReviewCountdownBanner(),
               const SizedBox(height: 12),
               Text(
                 'You have reviewed all your items for the current month (${Item.currentMonthKey}).\nYour review list will reset next month automatically.',
@@ -303,7 +307,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               OutlinedButton.icon(
                 onPressed: widget.onResetAllReviews,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Reset This Month Reviews'),
+                label: const Text("Reset This Month's Reviews"),
               ),
             ],
           ),
@@ -330,13 +334,19 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
       padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset + 16),
       child: Column(
         children: [
-          const SizedBox(height: 10),
           // Header info
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                child: ReviewCountdownBanner(),
+              Expanded(
+                child: Text(
+                  '${Item.currentMonthKey} Usage Review',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Container(
@@ -358,7 +368,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
           ),
           const SizedBox(height: 4),
           Text(
-            'Swipe RIGHT if used, LEFT if not used, UP/DOWN to skip.',
+            'Next review in:',
             style: theme.textTheme.bodySmall?.copyWith(
               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
             ),
@@ -537,8 +547,15 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               ),
             ),
           ),
+          const SizedBox(height: 2),
+          Text(
+            'Swipe RIGHT if used, LEFT if not used, UP/DOWN to skip.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 12),
-
           // Action Buttons Bar
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -724,7 +741,7 @@ class _ReviewCardContent extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Did you use this item during ${Item.currentMonthKey}?',
+                            'Did you use this item this month?',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
