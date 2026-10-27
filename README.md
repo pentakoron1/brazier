@@ -4,11 +4,24 @@
 
 Brazier is a privacy-first, open-source Android application built with Flutter that helps you calculate and track the actual value and monthly cost of your physical belongings over time.
 
+To download the app
 ---
-## *!!! Be one of the first testers for Playstore*
-*If you want to be part of the first testers so that the app can be published on playstore, please join this group: https://play.google.com/apps/testing/dev.pentakoron.brazier*
+  ### *!!! Be one of the first testers for Playstore*
+_If you want to be part of the first testers so that the app can be published on playstore, please join this group: https://play.google.com/apps/testing/dev.pentakoron.brazier_
 
-*We need at least 12 testers for 2 weeks to be able to publish the app, so thanks for joining!*
+> We need at least 12 testers for 2 weeks to be able to publish the app, so thanks for joining!
+
+  ### Before 2027 on F-droid 
+The F-droid platform requires app to be maintained for at least 3 months before being published, that means we could get it available for everyone just before 2027!
+
+> Meanwhile, you can still download on your phone just by downloading the .apk file on your phone, or via the obtainium app if you wnat automatic updates
+
+  ### Other platforms 
+Once the app will get a bit more mature, is also planned to release it on linux and windows, or maybe just as a website/web extension.
+
+> Don't forget to star the repo until then!🌟
+
+
 
 
 ## ✨ Features
