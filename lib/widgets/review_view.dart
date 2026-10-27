@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,106 @@ import '../theme/app_theme.dart';
 const Color fireOrange = AppColors.fireOrange; // Single unified Fire Orange Accent from AppTheme
 
 enum _SwipeThresholdState { none, used, notUsed }
+
+class ReviewCountdownBanner extends StatefulWidget {
+  const ReviewCountdownBanner({super.key});
+
+  @override
+  State<ReviewCountdownBanner> createState() => _ReviewCountdownBannerState();
+}
+
+class _ReviewCountdownBannerState extends State<ReviewCountdownBanner> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  DateTime get _nextReviewDate {
+    final now = DateTime.now();
+    return now.month == 12
+        ? DateTime(now.year + 1, 1, 1)
+        : DateTime(now.year, now.month + 1, 1);
+  }
+
+  String _formatCountdown(Duration duration) {
+    if (duration.isNegative || duration == Duration.zero) {
+      return 'Next review is now';
+    }
+
+    if (duration.inDays >= 1) {
+      final days = duration.inDays;
+      return 'Next review in $days ${days == 1 ? 'day' : 'days'}';
+    } else {
+      final hours = duration.inHours.toString().padLeft(2, '0');
+      final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+      final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+      return 'Next review in $hours:$minutes:$seconds';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final now = DateTime.now();
+    final remaining = _nextReviewDate.difference(now);
+    final countdownText = _formatCountdown(remaining);
+    final isLessThanDay = remaining.inDays < 1 && !remaining.isNegative;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: isLessThanDay
+            ? fireOrange.withValues(alpha: isDarkMode ? 0.2 : 0.12)
+            : (isDarkMode
+                ? const Color(0xFF1E2634)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isLessThanDay
+              ? fireOrange.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLessThanDay ? Icons.timer_outlined : Icons.calendar_today_outlined,
+            size: 15,
+            color: isLessThanDay ? fireOrange : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            countdownText,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isLessThanDay
+                  ? (isDarkMode ? const Color(0xFFFF9E80) : fireOrange)
+                  : theme.colorScheme.onSurface,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ReviewView extends StatefulWidget {
   final List<Item> items;
@@ -167,6 +268,8 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const ReviewCountdownBanner(),
+              const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -227,6 +330,11 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
       padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset + 16),
       child: Column(
         children: [
+          // Countdown Banner on top of page
+          const Center(
+            child: ReviewCountdownBanner(),
+          ),
+          const SizedBox(height: 10),
           // Header info
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
