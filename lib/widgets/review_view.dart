@@ -303,7 +303,7 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               OutlinedButton.icon(
                 onPressed: widget.onResetAllReviews,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Reset Monthly Reviews'),
+                label: const Text('Reset This Month Reviews'),
               ),
             ],
           ),
@@ -330,24 +330,13 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
       padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset + 16),
       child: Column(
         children: [
-          // Countdown Banner on top of page
-          const Center(
-            child: ReviewCountdownBanner(),
-          ),
           const SizedBox(height: 10),
           // Header info
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  'Monthly Usage Review',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              Container(
+                child: ReviewCountdownBanner(),
               ),
               const SizedBox(width: 8),
               Container(
