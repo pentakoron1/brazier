@@ -5,6 +5,8 @@ import '../models/currency.dart';
 class SettingsScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final String currentLocaleCode;
+  final ValueChanged<String> onLocaleChanged;
   final bool showSegmentedProgressBar;
   final ValueChanged<bool> onSegmentedProgressBarChanged;
   final Currency currency;
@@ -15,6 +17,8 @@ class SettingsScreen extends StatefulWidget {
     super.key,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.currentLocaleCode,
+    required this.onLocaleChanged,
     required this.showSegmentedProgressBar,
     required this.onSegmentedProgressBarChanged,
     required this.currency,
@@ -29,13 +33,24 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showSegmentedProgressBar;
   late ThemeMode _themeMode;
+  late String _currentLocaleCode;
   late Currency _currency;
+
+  final Map<String, String> _supportedLanguages = {
+    'system': 'System Default',
+    'en': 'English',
+    'es': 'Español',
+    'de': 'Deutsch',
+    'fr': 'Français',
+    'hi': 'हिन्दी',
+  };
 
   @override
   void initState() {
     super.initState();
     _showSegmentedProgressBar = widget.showSegmentedProgressBar;
     _themeMode = widget.themeMode;
+    _currentLocaleCode = widget.currentLocaleCode;
     _currency = widget.currency;
   }
 
@@ -135,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'APPEARANCE & THEME',
+              'APPEARANCE & LANGUAGE',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.bold,
@@ -224,6 +239,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+
+          // Language Selector ListTile
+          ListTile(
+            leading: const Icon(Icons.language_outlined),
+            title: const Text('Language'),
+            subtitle: Text(_supportedLanguages[_currentLocaleCode] ?? 'System Default'),
+            trailing: PopupMenuButton<String>(
+              icon: const Icon(Icons.arrow_drop_down),
+              onSelected: (code) {
+                setState(() {
+                  _currentLocaleCode = code;
+                });
+                widget.onLocaleChanged(code);
+              },
+              itemBuilder: (context) => _supportedLanguages.entries.map((entry) {
+                final isSelected = _currentLocaleCode == entry.key;
+                return PopupMenuItem<String>(
+                  value: entry.key,
+                  child: Row(
+                    children: [
+                      Icon(
+                        entry.key == 'system' ? Icons.settings_system_daydream : Icons.translate,
+                        color: isSelected ? theme.colorScheme.primary : null,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        entry.value,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? theme.colorScheme.primary : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ),
 
@@ -482,7 +536,6 @@ class _CustomCurrencyDialogState extends State<CustomCurrencyDialog> {
                         },
                       ),
                       const SizedBox(height: 20),
-                      // Live Preview
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(

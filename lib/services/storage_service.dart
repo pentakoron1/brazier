@@ -11,6 +11,7 @@ class StorageService {
   static const String _themeModeKey = 'brazier_theme_mode_v1';
   static const String _segmentedProgressKey = 'brazier_segmented_progress_v1';
   static const String _currencyKey = 'brazier_currency_v1';
+  static const String _localeKey = 'brazier_locale_code_v1';
 
   /// Saves the list of categories to SharedPreferences.
   static Future<void> saveCategories(List<Category> categories) async {
@@ -108,5 +109,17 @@ class StorageService {
     } catch (_) {
       return Currency.euro;
     }
+  }
+
+  /// Saves chosen language code ('system', 'en', 'es', etc.)
+  static Future<void> saveLocaleCode(String languageCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localeKey, languageCode);
+  }
+
+  /// Loads chosen language code. Returns 'system' if not set.
+  static Future<String> loadLocaleCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_localeKey) ?? 'system';
   }
 }

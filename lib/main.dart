@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'models/currency.dart';
 import 'models/item.dart';
@@ -27,18 +28,23 @@ class BrazierApp extends StatefulWidget {
 
 class _BrazierAppState extends State<BrazierApp> {
   ThemeMode _themeMode = ThemeMode.system;
+  String _localeCode = 'system';
+  Locale? _locale;
 
   @override
   void initState() {
     super.initState();
-    _loadThemeMode();
+    _loadPreferences();
   }
 
-  Future<void> _loadThemeMode() async {
+  Future<void> _loadPreferences() async {
     final mode = await StorageService.loadThemeMode();
+    final locCode = await StorageService.loadLocaleCode();
     if (mounted) {
       setState(() {
         _themeMode = mode;
+        _localeCode = locCode;
+        _locale = locCode == 'system' ? null : Locale(locCode);
       });
     }
   }
@@ -48,6 +54,14 @@ class _BrazierAppState extends State<BrazierApp> {
       _themeMode = mode;
     });
     StorageService.saveThemeMode(mode);
+  }
+
+  void _setLocaleCode(String code) {
+    setState(() {
+      _localeCode = code;
+      _locale = code == 'system' ? null : Locale(code);
+    });
+    StorageService.saveLocaleCode(code);
   }
 
   @override
@@ -85,6 +99,19 @@ class _BrazierAppState extends State<BrazierApp> {
       title: 'Brazier - Item Cost Tracker',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
+      locale: _locale,
+      supportedLocales: const [
+        Locale('en', ''),
+        Locale('es', ''),
+        Locale('de', ''),
+        Locale('fr', ''),
+        Locale('hi', ''),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: lightColorScheme,
@@ -124,6 +151,8 @@ class _BrazierAppState extends State<BrazierApp> {
       home: HomeScreen(
         themeMode: _themeMode,
         onThemeModeChanged: _setThemeMode,
+        currentLocaleCode: _localeCode,
+        onLocaleChanged: _setLocaleCode,
       ),
     );
   }
@@ -132,11 +161,15 @@ class _BrazierAppState extends State<BrazierApp> {
 class HomeScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final String currentLocaleCode;
+  final ValueChanged<String> onLocaleChanged;
 
   const HomeScreen({
     super.key,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.currentLocaleCode,
+    required this.onLocaleChanged,
   });
 
   @override
@@ -290,7 +323,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (index != -1) {
         _categories[index] = updatedCat;
       }
-      // Update item references so all existing items immediately reflect new name/icon/color
       for (final item in _items) {
         if (item.category.id == updatedCat.id) {
           item.category = updatedCat;
@@ -338,6 +370,8 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => SettingsScreen(
           themeMode: widget.themeMode,
           onThemeModeChanged: widget.onThemeModeChanged,
+          currentLocaleCode: widget.currentLocaleCode,
+          onLocaleChanged: widget.onLocaleChanged,
           showSegmentedProgressBar: _showSegmentedProgressBar,
           onSegmentedProgressBarChanged: (value) {
             setState(() {
@@ -394,18 +428,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (oldStatus == newStatus && !current.isDefaultUsed) return;
 
-    // Adjust usedDurationMonths and usageStreak depending on transition
     if (oldStatus == MonthlyReviewStatus.used && newStatus != MonthlyReviewStatus.used) {
-      // Was used, now no longer used -> decrement duration and decrement streak
       current.usedDurationMonths = max(0, current.usedDurationMonths - 1);
       current.usageStreak = max(0, current.usageStreak - 1);
     } else if (oldStatus != MonthlyReviewStatus.used && newStatus == MonthlyReviewStatus.used) {
-      // Was not used/pending, now used -> increment duration and increment streak
       current.usedDurationMonths += 1;
       current.usageStreak += 1;
     }
 
-    // Update review status flags
     switch (newStatus) {
       case MonthlyReviewStatus.used:
         current.lastReviewedMonthKey = Item.currentMonthKey;
@@ -414,13 +444,13 @@ class _HomeScreenState extends State<HomeScreen> {
       case MonthlyReviewStatus.notUsed:
         current.lastReviewedMonthKey = Item.currentMonthKey;
         current.currentMonthUsed = false;
-        current.usageStreak = 0; // Reset streak on explicitly marked not used
-        current.isDefaultUsed = false; // Disable auto-default on explicit override
+        current.usageStreak = 0;
+        current.isDefaultUsed = false;
         break;
       case MonthlyReviewStatus.pending:
         current.lastReviewedMonthKey = null;
         current.currentMonthUsed = null;
-        current.isDefaultUsed = false; // Disable auto-default on explicit override
+        current.isDefaultUsed = false;
         break;
     }
   }
@@ -532,7 +562,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          // Gear Settings Button
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
