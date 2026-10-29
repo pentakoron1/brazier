@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'models/currency.dart';
 import 'models/item.dart';
@@ -107,11 +106,7 @@ class _BrazierAppState extends State<BrazierApp> {
         Locale('fr', ''),
         Locale('hi', ''),
       ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: lightColorScheme,
