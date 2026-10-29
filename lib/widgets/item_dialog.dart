@@ -141,6 +141,22 @@ class _ItemDialogState extends State<ItemDialog> {
   int get _currentGoalDuration => int.tryParse(_goalDurationController.text) ?? 1;
   int get _currentUsedDuration => int.tryParse(_usedDurationController.text) ?? 0;
 
+  String get _runningSinceFormatted {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final now = DateTime.now();
+    final monthsToSubtract = _currentGoalDuration > 0 ? _currentGoalDuration - 1 : 0;
+    int year = now.year;
+    int month = now.month - monthsToSubtract;
+    while (month < 1) {
+      month += 12;
+      year -= 1;
+    }
+    return 'subscription running since ${monthNames[month - 1]} $year';
+  }
+
   double get _goalPricePerMonth =>
       _currentGoalDuration > 0 ? _currentPrice / _currentGoalDuration : _currentPrice;
 
@@ -379,7 +395,7 @@ class _ItemDialogState extends State<ItemDialog> {
                                     ? 'Running Duration'
                                     : 'Goal Duration',
                                 helperText: _selectedItemType == ItemType.subscription
-                                    ? 'how long the subscription has been running.'
+                                    ? _runningSinceFormatted
                                     : 'how long you want to keep the item.',
                                 helperStyle: const TextStyle(fontStyle: FontStyle.italic),
                                 helperMaxLines: 3,
