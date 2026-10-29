@@ -14,7 +14,7 @@ _If you want to be part of the first testers so that the app can be published on
   ### Before 2027 on F-droid 
 The F-droid platform requires app to be maintained for at least 3 months before being published, that means we could get it available for everyone just before 2027!
 
-> Meanwhile, you can still download on your phone just by downloading the .apk file on your phone, or via the obtainium app if you wnat automatic updates
+> Meanwhile, you can still download on your phone just by downloading the .apk file on your phone, or via the obtainium app if you want automatic updates.
 
   ### Other platforms 
 Once the app will get a bit more mature, is also planned to release it on linux and windows, or maybe just as a website/web extension.
