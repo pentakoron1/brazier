@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
@@ -48,9 +49,10 @@ class _ItemDialogState extends State<ItemDialog> {
     _priceController = TextEditingController(
       text: item != null ? item.price.toStringAsFixed(2) : '',
     );
-    _goalDurationController = TextEditingController(
-      text: item != null ? item.goalDurationMonths.toString() : '12',
-    );
+    final defaultDuration = (item != null)
+        ? item.goalDurationMonths.toString()
+        : (_selectedItemType == ItemType.subscription ? '1' : '12');
+    _goalDurationController = TextEditingController(text: defaultDuration);
     _usedDurationController = TextEditingController(
       text: item != null ? item.usedDurationMonths.toString() : '0',
     );
@@ -71,6 +73,11 @@ class _ItemDialogState extends State<ItemDialog> {
   }
 
   void _updateCalculations() {
+    final used = int.tryParse(_usedDurationController.text) ?? 0;
+    final goal = int.tryParse(_goalDurationController.text) ?? 0;
+    if (used > goal) {
+      _goalDurationController.text = used.toString();
+    }
     setState(() {});
   }
 
@@ -142,13 +149,15 @@ class _ItemDialogState extends State<ItemDialog> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      final goalDuration = max(_currentGoalDuration, _currentUsedDuration);
+
       final newItem = Item(
         id: widget.item?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
         itemType: _selectedItemType,
         price: _currentPrice,
         category: _selectedCategory,
-        goalDurationMonths: _currentGoalDuration,
+        goalDurationMonths: goalDuration,
         usedDurationMonths: _currentUsedDuration,
         lastReviewedMonthKey: widget.item?.lastReviewedMonthKey,
         currentMonthUsed: widget.item?.currentMonthUsed,
@@ -229,8 +238,16 @@ class _ItemDialogState extends State<ItemDialog> {
                         ],
                         selected: {_selectedItemType},
                         onSelectionChanged: (newSelection) {
+                          final newType = newSelection.first;
                           setState(() {
-                            _selectedItemType = newSelection.first;
+                            _selectedItemType = newType;
+                            if (widget.item == null) {
+                              if (newType == ItemType.subscription && _goalDurationController.text == '12') {
+                                _goalDurationController.text = '1';
+                              } else if (newType == ItemType.singlePurchase && _goalDurationController.text == '1') {
+                                _goalDurationController.text = '12';
+                              }
+                            }
                           });
                         },
                       ),

@@ -140,13 +140,14 @@ class Item {
     this.itemType = ItemType.singlePurchase,
     required this.price,
     required this.category,
-    required this.goalDurationMonths,
-    required this.usedDurationMonths,
+    required int goalDurationMonths,
+    required int usedDurationMonths,
     this.lastReviewedMonthKey,
     this.currentMonthUsed,
     this.isDefaultUsed = false,
     this.usageStreak = 0,
-  });
+  })  : goalDurationMonths = usedDurationMonths > goalDurationMonths ? usedDurationMonths : goalDurationMonths,
+        usedDurationMonths = usedDurationMonths;
 
   bool get isSubscription => itemType == ItemType.subscription;
 
@@ -164,6 +165,40 @@ class Item {
   static String get currentMonthKey {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
+  /// Calculates difference in months between two month key strings (e.g. "2025-05" and "2025-06").
+  static int calculateMonthDifference(String startKey, String endKey) {
+    try {
+      final startParts = startKey.split('-');
+      final endParts = endKey.split('-');
+      final startYear = int.parse(startParts[0]);
+      final startMonth = int.parse(startParts[1]);
+      final endYear = int.parse(endParts[0]);
+      final endMonth = int.parse(endParts[1]);
+
+      return (endYear - startYear) * 12 + (endMonth - startMonth);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Checks if a new month has arrived for a subscription and automatically
+  /// increments [goalDurationMonths] (running duration) accordingly.
+  void checkAutoIncrementSubscriptionRunningDuration() {
+    if (!isSubscription) return;
+    final currentKey = currentMonthKey;
+    if (lastReviewedMonthKey == null) {
+      lastReviewedMonthKey = currentKey;
+      return;
+    }
+    if (lastReviewedMonthKey != currentKey) {
+      final elapsedMonths = calculateMonthDifference(lastReviewedMonthKey!, currentKey);
+      if (elapsedMonths > 0) {
+        goalDurationMonths += elapsedMonths;
+        lastReviewedMonthKey = currentKey;
+      }
+    }
   }
 
   /// Automatically syncs monthly usage if [isDefaultUsed] is enabled.
@@ -184,6 +219,7 @@ class Item {
 
   /// Returns the current month's review status.
   MonthlyReviewStatus get currentMonthlyStatus {
+    checkAutoIncrementSubscriptionRunningDuration();
     if (enableDefaultAsUsedFeature) {
       checkAutoSyncDefaultUsed();
       if (isDefaultUsed) {

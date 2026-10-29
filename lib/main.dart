@@ -207,6 +207,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (loadedItems != null) {
         _items = loadedItems;
+        bool updatedSubscriptions = false;
+        for (final item in _items) {
+          final oldGoal = item.goalDurationMonths;
+          item.checkAutoIncrementSubscriptionRunningDuration();
+          if (item.goalDurationMonths != oldGoal) {
+            updatedSubscriptions = true;
+          }
+        }
+        if (updatedSubscriptions) {
+          StorageService.saveItems(_items);
+        }
       } else if (enableDefaultItemsOnFirstLaunch) {
         // First launch sample items
         final clothesCat = _categories.firstWhere((c) => c.id == 'clothes', orElse: () => _categories.first);
