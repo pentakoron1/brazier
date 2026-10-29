@@ -80,7 +80,7 @@ class ItemsDetailScreen extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     // Baseline scaling: max total price and max monthly cost across items in this subpage
-    final maxPrice = items.fold(0.0, (maxVal, item) => item.price > maxVal ? item.price : maxVal);
+    final maxPrice = items.fold(0.0, (maxVal, item) => item.effectiveTotalPrice > maxVal ? item.effectiveTotalPrice : maxVal);
     final maxMonthlyCost = items.fold(0.0, (maxVal, item) {
       final usedCost = item.usedDurationMonths > 0 ? item.usedPricePerMonth : item.goalPricePerMonth;
       final itemMax = max(item.goalPricePerMonth, usedCost);
@@ -268,8 +268,8 @@ class ItemsDetailScreen extends StatelessWidget {
 
                           _MetricRow(
                             compact: compact,
-                            label: 'Total Price:',
-                            value: currency.format(item.price),
+                            label: item.isSubscription ? 'Total Cost:' : 'Total Price:',
+                            value: currency.format(item.effectiveTotalPrice),
                             labelStyle: labelStyle,
                             valueStyle: TextStyle(
                               fontWeight: FontWeight.bold,

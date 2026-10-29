@@ -684,7 +684,7 @@ class _ReviewCardContent extends StatelessWidget {
     final currentCostPerMo = item.usedDurationMonths > 0
         ? currency.formatMonthly(item.usedPricePerMonth, compact: true)
         : 'N/A';
-    final newCostPerMo = currency.formatMonthly(item.price / nextUsedDuration, compact: true);
+    final newCostPerMo = currency.formatMonthly(item.effectiveTotalPrice / nextUsedDuration, compact: true);
 
     return Card(
       elevation: 3,
@@ -709,34 +709,70 @@ class _ReviewCardContent extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: item.category.color.withValues(alpha: isDarkMode ? 0.25 : 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  item.category.icon,
-                                  size: 16,
-                                  color: item.category.color,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: item.category.color.withValues(alpha: isDarkMode ? 0.25 : 0.15),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      item.category.icon,
+                                      size: 16,
+                                      color: item.category.color,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      item.category.displayName,
+                                      style: TextStyle(
+                                        color: item.category.color,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (item.isSubscription) ...[
                                 const SizedBox(width: 6),
-                                Text(
-                                  item.category.displayName,
-                                  style: TextStyle(
-                                    color: item.category.color,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(alpha: isDarkMode ? 0.25 : 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.autorenew_outlined,
+                                        size: 13,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Subscription',
+                                        style: TextStyle(
+                                          color: theme.colorScheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
                           Text(
-                            currency.format(item.price),
+                            currency.format(item.effectiveTotalPrice),
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: null,
@@ -781,7 +817,10 @@ class _ReviewCardContent extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Goal duration:', style: theme.textTheme.bodyMedium),
+                                Text(
+                                  item.isSubscription ? 'Running duration:' : 'Goal duration:',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
                                 Flexible(
                                   child: Text(
                                     '${item.goalDurationMonths} mo (${currency.formatMonthly(item.goalPricePerMonth, compact: true)})',

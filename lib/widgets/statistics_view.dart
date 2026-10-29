@@ -76,7 +76,7 @@ class StatisticsView extends StatelessWidget {
       );
     }
 
-    final totalSpent = items.fold(0.0, (sum, item) => sum + item.price);
+    final totalSpent = items.fold(0.0, (sum, item) => sum + item.effectiveTotalPrice);
     final reachedGoals = items.where((i) => i.isGoalReached).toList();
     final inProgress = items.where((i) => !i.isGoalReached).toList();
     final activeStreaksCount = items.where((i) => i.usageStreak > 0).length;
@@ -338,7 +338,7 @@ class StatisticsView extends StatelessWidget {
           ...categoryMap.entries.map((entry) {
             final category = entry.key;
             final catItems = entry.value;
-            final categoryTotal = catItems.fold(0.0, (sum, i) => sum + i.price);
+            final categoryTotal = catItems.fold(0.0, (sum, i) => sum + i.effectiveTotalPrice);
             final categoryGoalRate = catItems.fold(0.0, (sum, i) => sum + i.goalPricePerMonth);
             final categoryUsedRate = catItems.fold(0.0, (sum, i) => sum + i.usedPricePerMonth);
             final categoryPercentage = totalSpent > 0 ? (categoryTotal / totalSpent) : 0.0;
