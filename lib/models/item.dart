@@ -1,6 +1,6 @@
 // ignore_for_file: non_const_argument_for_const_parameter
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class Category {
   final String id;
@@ -116,9 +116,15 @@ enum MonthlyReviewStatus {
   notUsed,
 }
 
+enum ItemType {
+  singlePurchase,
+  subscription,
+}
+
 class Item {
   final String id;
   String name;
+  ItemType itemType;
   double price;
   Category category;
   int goalDurationMonths;
@@ -131,20 +137,68 @@ class Item {
   Item({
     required this.id,
     required this.name,
+    this.itemType = ItemType.singlePurchase,
     required this.price,
     required this.category,
-    required this.goalDurationMonths,
-    required this.usedDurationMonths,
+    required int goalDurationMonths,
+    required int usedDurationMonths,
     this.lastReviewedMonthKey,
     this.currentMonthUsed,
     this.isDefaultUsed = false,
     this.usageStreak = 0,
-  });
+  })  : goalDurationMonths = usedDurationMonths > goalDurationMonths ? usedDurationMonths : goalDurationMonths,
+        usedDurationMonths = usedDurationMonths;
+
+  bool get isSubscription => itemType == ItemType.subscription;
+
+  /// Effective Total Price / Total Cost.
+  /// For Single Purchase: `price`
+  /// For Subscription: `price * goalDurationMonths` (monthly fee * running months)
+  double get effectiveTotalPrice {
+    if (isSubscription) {
+      return price * goalDurationMonths;
+    }
+    return price;
+  }
 
   /// Calculates current year-month key string, e.g. "2025-05".
   static String get currentMonthKey {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
+  /// Calculates difference in months between two month key strings (e.g. "2025-05" and "2025-06").
+  static int calculateMonthDifference(String startKey, String endKey) {
+    try {
+      final startParts = startKey.split('-');
+      final endParts = endKey.split('-');
+      final startYear = int.parse(startParts[0]);
+      final startMonth = int.parse(startParts[1]);
+      final endYear = int.parse(endParts[0]);
+      final endMonth = int.parse(endParts[1]);
+
+      return (endYear - startYear) * 12 + (endMonth - startMonth);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Checks if a new month has arrived for a subscription and automatically
+  /// increments [goalDurationMonths] (running duration) accordingly.
+  void checkAutoIncrementSubscriptionRunningDuration() {
+    if (!isSubscription) return;
+    final currentKey = currentMonthKey;
+    if (lastReviewedMonthKey == null) {
+      lastReviewedMonthKey = currentKey;
+      return;
+    }
+    if (lastReviewedMonthKey != currentKey) {
+      final elapsedMonths = calculateMonthDifference(lastReviewedMonthKey!, currentKey);
+      if (elapsedMonths > 0) {
+        goalDurationMonths += elapsedMonths;
+        lastReviewedMonthKey = currentKey;
+      }
+    }
   }
 
   /// Automatically syncs monthly usage if [isDefaultUsed] is enabled.
@@ -165,6 +219,7 @@ class Item {
 
   /// Returns the current month's review status.
   MonthlyReviewStatus get currentMonthlyStatus {
+    checkAutoIncrementSubscriptionRunningDuration();
     if (enableDefaultAsUsedFeature) {
       checkAutoSyncDefaultUsed();
       if (isDefaultUsed) {
@@ -182,16 +237,23 @@ class Item {
     return MonthlyReviewStatus.pending;
   }
 
-  /// Calculates the price per month based on goal duration.
+  /// Calculates the target price per month.
+  /// For Single Purchase: `price / goalDurationMonths`
+  /// For Subscription: `price` (the monthly fee)
   double get goalPricePerMonth {
+    if (isSubscription) {
+      return price;
+    }
     if (goalDurationMonths <= 0) return price;
     return price / goalDurationMonths;
   }
 
   /// Calculates the price per month based on actual used duration.
+  /// For Single Purchase: `price / usedDurationMonths`
+  /// For Subscription: `effectiveTotalPrice / usedDurationMonths`
   double get usedPricePerMonth {
-    if (usedDurationMonths <= 0) return price;
-    return price / usedDurationMonths;
+    if (usedDurationMonths <= 0) return effectiveTotalPrice;
+    return effectiveTotalPrice / usedDurationMonths;
   }
 
   /// Returns true if the actual used duration has reached or exceeded the goal duration.
@@ -206,6 +268,7 @@ class Item {
   Item copyWith({
     String? id,
     String? name,
+    ItemType? itemType,
     double? price,
     Category? category,
     int? goalDurationMonths,
@@ -218,6 +281,7 @@ class Item {
     return Item(
       id: id ?? this.id,
       name: name ?? this.name,
+      itemType: itemType ?? this.itemType,
       price: price ?? this.price,
       category: category ?? this.category,
       goalDurationMonths: goalDurationMonths ?? this.goalDurationMonths,
@@ -233,6 +297,7 @@ class Item {
     return {
       'id': id,
       'name': name,
+      'itemType': itemType.name,
       'price': price,
       'categoryId': category.id,
       'goalDurationMonths': goalDurationMonths,
@@ -251,9 +316,15 @@ class Item {
       orElse: () => categories.isNotEmpty ? categories.first : Category.defaultCategories.first,
     );
 
+    final rawItemType = json['itemType'] as String?;
+    final type = rawItemType == 'subscription'
+        ? ItemType.subscription
+        : ItemType.singlePurchase;
+
     return Item(
       id: json['id'] as String,
       name: json['name'] as String,
+      itemType: type,
       price: (json['price'] as num).toDouble(),
       category: foundCategory,
       goalDurationMonths: json['goalDurationMonths'] as int? ?? 12,

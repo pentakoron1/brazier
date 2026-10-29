@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
 import '../models/item.dart';
@@ -20,7 +20,7 @@ class SummaryCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     final totalItems = items.length;
-    final totalSpent = items.fold(0.0, (sum, item) => sum + item.price);
+    final totalSpent = items.fold(0.0, (sum, item) => sum + item.effectiveTotalPrice);
     final totalGoalPerMonth = items.fold(0.0, (sum, item) => sum + item.goalPricePerMonth);
     final totalUsedPerMonth = items.fold(0.0, (sum, item) => sum + item.usedPricePerMonth);
     final reachedGoals = items.where((item) => item.isGoalReached).length;

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
 import '../models/item.dart';
@@ -390,8 +390,40 @@ class ItemCard extends StatelessWidget {
                               ),
                             ),
 
+                          // Subscription Tag
+                          if (item.isSubscription)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(alpha: isDarkMode ? 0.25 : 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.autorenew_outlined,
+                                    size: 13,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Subscription',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           // Goal Reached Badge
-                          if (isGoalReached)
+                          if (isGoalReached && !item.isSubscription)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
@@ -476,7 +508,7 @@ class ItemCard extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        currency.format(item.price),
+                        currency.format(item.effectiveTotalPrice),
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           fontSize: 17,
@@ -500,18 +532,24 @@ class ItemCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      // Goal Duration Column
+                      // Goal or Running Duration Column
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.flag_outlined, size: 15, color: Colors.grey),
+                                Icon(
+                                  item.isSubscription ? Icons.history_toggle_off : Icons.flag_outlined,
+                                  size: 15,
+                                  color: Colors.grey,
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    'Goal (${item.goalDurationMonths} mo)',
+                                    item.isSubscription
+                                        ? 'Running (${item.goalDurationMonths} mo)'
+                                        : 'Goal (${item.goalDurationMonths} mo)',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.bodySmall?.copyWith(
@@ -608,7 +646,9 @@ class ItemCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${item.usedDurationMonths} / ${item.goalDurationMonths} months',
+                      item.isSubscription
+                          ? '${item.usedDurationMonths} / ${item.goalDurationMonths} months running'
+                          : '${item.usedDurationMonths} / ${item.goalDurationMonths} months',
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isGoalReached ? fireOrange : null,
@@ -839,7 +879,7 @@ class CompactItemCard extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    currency.format(item.price),
+                    currency.format(item.effectiveTotalPrice),
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),

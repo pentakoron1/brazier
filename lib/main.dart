@@ -1,6 +1,5 @@
 import 'dart:math';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'models/currency.dart';
 import 'models/item.dart';
@@ -107,11 +106,7 @@ class _BrazierAppState extends State<BrazierApp> {
         Locale('fr', ''),
         Locale('hi', ''),
       ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: lightColorScheme,
@@ -212,6 +207,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (loadedItems != null) {
         _items = loadedItems;
+        bool updatedSubscriptions = false;
+        for (final item in _items) {
+          final oldGoal = item.goalDurationMonths;
+          item.checkAutoIncrementSubscriptionRunningDuration();
+          if (item.goalDurationMonths != oldGoal) {
+            updatedSubscriptions = true;
+          }
+        }
+        if (updatedSubscriptions) {
+          StorageService.saveItems(_items);
+        }
       } else if (enableDefaultItemsOnFirstLaunch) {
         // First launch sample items
         final clothesCat = _categories.firstWhere((c) => c.id == 'clothes', orElse: () => _categories.first);
