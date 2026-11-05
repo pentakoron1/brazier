@@ -573,12 +573,13 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Settings',
             onPressed: _openSettings,
           ),
-          if (_currentTabIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Add Item',
-              onPressed: _openAddDialog,
-            ),
+          IconButton(
+            icon: const Icon(Icons.info),
+            tooltip: 'Info',
+            onPressed: () {
+              showAboutDialog(context: context);
+            },
+          ),
         ],
       ),
       body: SafeArea(
