@@ -95,7 +95,7 @@ class _BrazierAppState extends State<BrazierApp> {
     );
 
     return MaterialApp(
-      title: 'Brazier - Item Cost Tracker',
+      title: 'Brazier - Monthly Cost Tracker',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
       locale: _locale,
