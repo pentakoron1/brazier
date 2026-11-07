@@ -518,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [const Text('like this')],
+              children: [const Text('like this.')],
             )
           )
         );
