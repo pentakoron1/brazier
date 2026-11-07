@@ -509,6 +509,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => ItemDialog(
+        categories: _categories,
+        currency: _currency,
+        onSave: _addItem,
+        onAddCategory: _addCategory,
+        onUpdateCategory: _updateCategory,
+        onDeleteCategory: _deleteCategory,
+      ),
+    );
+  }
+
+
   String get _appBarTitle {
     switch (_currentTabIndex) {
       case 0:
@@ -576,9 +591,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.info),
             tooltip: 'Info',
-            onPressed: () {
-              showAboutDialog(context: context);
-            },
+            onPressed: _openInfoDialog,
           ),
         ],
       ),
