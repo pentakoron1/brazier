@@ -72,3 +72,9 @@ Brazier is built to comply strictly with [F-Droid Inclusion Policy](https://f-dr
 ## 📄 License
 
 Brazier is released under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
+
+---
+
+## Contribute
+
+All contributions are welcome! Find more information on how you can contribute to Brazier [here](CONTRIBUTING.md).
