@@ -512,14 +512,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openInfoDialog() {
     showDialog(
       context: context,
-      builder: (context) => ItemDialog(
-        categories: _categories,
-        currency: _currency,
-        onSave: _addItem,
-        onAddCategory: _addCategory,
-        onUpdateCategory: _updateCategory,
-        onDeleteCategory: _deleteCategory,
-      ),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('How does Brazier work?'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [const Text('like this')],
+            )
+          )
+        );
+      },
     );
   }
 
