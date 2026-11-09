@@ -39,10 +39,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, String> _supportedLanguages = {
     'system': 'System Default',
     'en': 'English',
-    'es': 'Español',
-    'de': 'Deutsch',
-    'fr': 'Français',
-    'hi': 'हिन्दी',
+    'es': 'Español (not supported yet)',
+    'de': 'Deutsch (not supported yet)',
+    'fr': 'Français (not supported yet)',
+    'hi': 'हिन्दी (not supported yet)',
   };
 
   @override
