@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
@@ -57,12 +58,17 @@ class _ItemDialogState extends State<ItemDialog> {
       text: item != null ? item.usedDurationMonths.toString() : '0',
     );
 
-    final Category initialCategory = (item != null && widget.categories.isNotEmpty)
+    final Category initialCategory =
+        (item != null && widget.categories.isNotEmpty)
         ? widget.categories.firstWhere(
-            (c) => c.id == item.category.id || c.displayName == item.category.displayName,
+            (c) =>
+                c.id == item.category.id ||
+                c.displayName == item.category.displayName,
             orElse: () => widget.categories.first,
           )
-        : (widget.categories.isNotEmpty ? widget.categories.first : Category.defaultCategories.first);
+        : (widget.categories.isNotEmpty
+              ? widget.categories.first
+              : Category.defaultCategories.first);
 
     _selectedCategory = initialCategory;
     _isDefaultUsed = item?.isDefaultUsed ?? false;
@@ -138,16 +144,30 @@ class _ItemDialogState extends State<ItemDialog> {
   }
 
   double get _currentPrice => double.tryParse(_priceController.text) ?? 0.0;
-  int get _currentGoalDuration => int.tryParse(_goalDurationController.text) ?? 1;
-  int get _currentUsedDuration => int.tryParse(_usedDurationController.text) ?? 0;
+  int get _currentGoalDuration =>
+      int.tryParse(_goalDurationController.text) ?? 1;
+  int get _currentUsedDuration =>
+      int.tryParse(_usedDurationController.text) ?? 0;
 
   String get _runningSinceFormatted {
     const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final now = DateTime.now();
-    final monthsToSubtract = _currentGoalDuration > 0 ? _currentGoalDuration - 1 : 0;
+    final monthsToSubtract = _currentGoalDuration > 0
+        ? _currentGoalDuration - 1
+        : 0;
     int year = now.year;
     int month = now.month - monthsToSubtract;
     while (month < 1) {
@@ -157,11 +177,13 @@ class _ItemDialogState extends State<ItemDialog> {
     return 'subscription running since ${monthNames[month - 1]} $year';
   }
 
-  double get _goalPricePerMonth =>
-      _currentGoalDuration > 0 ? _currentPrice / _currentGoalDuration : _currentPrice;
+  double get _goalPricePerMonth => _currentGoalDuration > 0
+      ? _currentPrice / _currentGoalDuration
+      : _currentPrice;
 
-  double get _usedPricePerMonth =>
-      _currentUsedDuration > 0 ? _currentPrice / _currentUsedDuration : _currentPrice;
+  double get _usedPricePerMonth => _currentUsedDuration > 0
+      ? _currentPrice / _currentUsedDuration
+      : _currentPrice;
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
@@ -190,7 +212,9 @@ class _ItemDialogState extends State<ItemDialog> {
     final isEditing = widget.item != null;
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final isGoalReached = _currentUsedDuration >= _currentGoalDuration && _currentGoalDuration > 0;
+    final isGoalReached =
+        _currentUsedDuration >= _currentGoalDuration &&
+        _currentGoalDuration > 0;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -258,9 +282,11 @@ class _ItemDialogState extends State<ItemDialog> {
                           setState(() {
                             _selectedItemType = newType;
                             if (widget.item == null) {
-                              if (newType == ItemType.subscription && _goalDurationController.text == '12') {
+                              if (newType == ItemType.subscription &&
+                                  _goalDurationController.text == '12') {
                                 _goalDurationController.text = '1';
-                              } else if (newType == ItemType.singlePurchase && _goalDurationController.text == '1') {
+                              } else if (newType == ItemType.singlePurchase &&
+                                  _goalDurationController.text == '1') {
                                 _goalDurationController.text = '12';
                               }
                             }
@@ -294,7 +320,9 @@ class _ItemDialogState extends State<ItemDialog> {
                       // Price field
                       TextFormField(
                         controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: _selectedItemType == ItemType.subscription
                               ? 'Cost / Month (${widget.currency.symbol}/mo)'
@@ -302,9 +330,11 @@ class _ItemDialogState extends State<ItemDialog> {
                           hintText: _selectedItemType == ItemType.subscription
                               ? 'e.g., 15.00'
                               : 'e.g., 100.00',
-                          prefixIcon: Icon(_selectedItemType == ItemType.subscription
-                              ? Icons.payments_outlined
-                              : Icons.money),
+                          prefixIcon: Icon(
+                            _selectedItemType == ItemType.subscription
+                                ? Icons.payments_outlined
+                                : Icons.money,
+                          ),
                           border: const OutlineInputBorder(),
                         ),
                         validator: (value) {
@@ -333,7 +363,10 @@ class _ItemDialogState extends State<ItemDialog> {
                           TextButton.icon(
                             onPressed: _openCategoryManagerDialog,
                             icon: const Icon(Icons.settings, size: 16),
-                            label: const Text('Manage Categories', style: TextStyle(fontSize: 12)),
+                            label: const Text(
+                              'Manage Categories',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -345,7 +378,8 @@ class _ItemDialogState extends State<ItemDialog> {
                           ...widget.categories.map((cat) {
                             final selected = _selectedCategory.id == cat.id;
                             return FilterChip(
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               selected: selected,
                               showCheckmark: false,
                               avatar: Icon(
@@ -361,7 +395,9 @@ class _ItemDialogState extends State<ItemDialog> {
                                 color: selected
                                     ? theme.colorScheme.onPrimary
                                     : theme.colorScheme.onSurface,
-                                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: selected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                               onSelected: (bool isSelected) {
                                 if (isSelected) {
@@ -374,7 +410,8 @@ class _ItemDialogState extends State<ItemDialog> {
                           }),
                           // Add Category Chip directly among the choices!
                           ActionChip(
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                             avatar: const Icon(Icons.add, size: 18),
                             label: const Text('Add Category'),
                             onPressed: _openCreateCategoryDialog,
@@ -390,63 +427,69 @@ class _ItemDialogState extends State<ItemDialog> {
                       ),
                       const SizedBox(height: 16),
                       // Duration section
-                          // Goal or Running duration
-                            TextFormField(
-                              controller: _goalDurationController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: _selectedItemType == ItemType.subscription
-                                    ? 'Running Duration'
-                                    : 'Goal Duration',
-                                helperText: _selectedItemType == ItemType.subscription
-                                    ? _runningSinceFormatted
-                                    : 'how long you want to keep the item.',
-                                helperStyle: const TextStyle(fontStyle: FontStyle.italic),
-                                helperMaxLines: 3,
-                                suffixText: 'months',
-                                prefixIcon: Icon(_selectedItemType == ItemType.subscription
-                                    ? Icons.history_toggle_off
-                                    : Icons.flag_outlined),
-                                border: const OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Enter duration';
-                                }
-                                final months = int.tryParse(value);
-                                if (months == null || months <= 0) {
-                                  return 'Min 1 month';
-                                }
-                                return null;
-                              },
-                            ),
-                          const SizedBox(height: 16),
-                          // Used duration
-                            TextFormField(
-                              controller: _usedDurationController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Used Duration',
-                                helperText: _selectedItemType == ItemType.subscription
-                                    ? 'how long you actually used the subscription.'
-                                    : 'how long you already used the item.',
-                                helperStyle: const TextStyle(fontStyle: FontStyle.italic),
-                                helperMaxLines: 3,
-                                suffixText: 'months',
-                                prefixIcon: const Icon(Icons.history),
-                                border: const OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Enter duration';
-                                }
-                                final months = int.tryParse(value);
-                                if (months == null || months < 0) {
-                                  return 'Cannot be negative';
-                                }
-                                return null;
-                              },
-                            ),
+                      // Goal or Running duration
+                      TextFormField(
+                        controller: _goalDurationController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: _selectedItemType == ItemType.subscription
+                              ? 'Running Duration'
+                              : 'Goal Duration',
+                          helperText: _selectedItemType == ItemType.subscription
+                              ? _runningSinceFormatted
+                              : 'how long you want to keep the item.',
+                          helperStyle: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                          ),
+                          helperMaxLines: 3,
+                          suffixText: 'months',
+                          prefixIcon: Icon(
+                            _selectedItemType == ItemType.subscription
+                                ? Icons.history_toggle_off
+                                : Icons.flag_outlined,
+                          ),
+                          border: const OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter duration';
+                          }
+                          final months = int.tryParse(value);
+                          if (months == null || months <= 0) {
+                            return 'Min 1 month';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Used duration
+                      TextFormField(
+                        controller: _usedDurationController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Used Duration',
+                          helperText: _selectedItemType == ItemType.subscription
+                              ? 'how long you actually used the subscription.'
+                              : 'how long you already used the item.',
+                          helperStyle: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                          ),
+                          helperMaxLines: 3,
+                          suffixText: 'months',
+                          prefixIcon: const Icon(Icons.history),
+                          border: const OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter duration';
+                          }
+                          final months = int.tryParse(value);
+                          if (months == null || months < 0) {
+                            return 'Cannot be negative';
+                          }
+                          return null;
+                        },
+                      ),
                       if (enableDefaultAsUsedFeature) ...[
                         const SizedBox(height: 16),
                         // Default as Used Option
@@ -461,13 +504,18 @@ class _ItemDialogState extends State<ItemDialog> {
                           activeColor: theme.colorScheme.primary,
                           title: const Text(
                             'Default as used every month',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
                           subtitle: Text(
                             'Automatically marks this item as used every month without needing manual review',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                              color: isDarkMode
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600,
                             ),
                           ),
                           controlAffinity: ListTileControlAffinity.leading,
@@ -481,13 +529,17 @@ class _ItemDialogState extends State<ItemDialog> {
                         decoration: BoxDecoration(
                           color: isGoalReached
                               ? (isDarkMode
-                                  ? Colors.green.shade900.withValues(alpha: 0.3)
-                                  : Colors.green.shade50)
+                                    ? Colors.green.shade900.withValues(
+                                        alpha: 0.3,
+                                      )
+                                    : Colors.green.shade50)
                               : theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isGoalReached
-                                ? (isDarkMode ? Colors.green.shade400 : Colors.green.shade300)
+                                ? (isDarkMode
+                                      ? Colors.green.shade400
+                                      : Colors.green.shade300)
                                 : theme.colorScheme.outlineVariant,
                             width: isGoalReached ? 2 : 1,
                           ),
@@ -500,9 +552,13 @@ class _ItemDialogState extends State<ItemDialog> {
                                 Icon(
                                   _selectedItemType == ItemType.subscription
                                       ? Icons.autorenew_outlined
-                                      : (isGoalReached ? Icons.check_circle : Icons.calculate),
+                                      : (isGoalReached
+                                            ? Icons.check_circle
+                                            : Icons.calculate),
                                   color: isGoalReached
-                                      ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
+                                      ? (isDarkMode
+                                            ? Colors.green.shade300
+                                            : Colors.green.shade700)
                                       : theme.colorScheme.primary,
                                   size: 20,
                                 ),
@@ -510,11 +566,15 @@ class _ItemDialogState extends State<ItemDialog> {
                                 Text(
                                   _selectedItemType == ItemType.subscription
                                       ? 'Subscription Summary'
-                                      : (isGoalReached ? 'Goal Reached!' : 'Calculated Cost / Month'),
+                                      : (isGoalReached
+                                            ? 'Goal Reached!'
+                                            : 'Calculated Cost / Month'),
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: isGoalReached
-                                        ? (isDarkMode ? Colors.green.shade200 : Colors.green.shade800)
+                                        ? (isDarkMode
+                                              ? Colors.green.shade200
+                                              : Colors.green.shade800)
                                         : null,
                                   ),
                                 ),
@@ -523,40 +583,48 @@ class _ItemDialogState extends State<ItemDialog> {
                             const SizedBox(height: 8),
                             if (_selectedItemType == ItemType.subscription) ...[
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Total cost running:',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                   Text(
-                                    widget.currency.format(_currentPrice * _currentGoalDuration),
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
+                                    widget.currency.format(
+                                      _currentPrice * _currentGoalDuration,
                                     ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Monthly fee:',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                   Text(
-                                    widget.currency.formatMonthly(_currentPrice, compact: true),
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.primary,
+                                    widget.currency.formatMonthly(
+                                      _currentPrice,
+                                      compact: true,
                                     ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.primary,
+                                        ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Actual cost / used mo:',
@@ -565,39 +633,50 @@ class _ItemDialogState extends State<ItemDialog> {
                                   Text(
                                     _currentUsedDuration > 0
                                         ? widget.currency.formatMonthly(
-                                            (_currentPrice * _currentGoalDuration) / _currentUsedDuration,
+                                            (_currentPrice *
+                                                    _currentGoalDuration) /
+                                                _currentUsedDuration,
                                             compact: true,
                                           )
                                         : 'N/A (0 months)',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: isGoalReached
-                                          ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                          : null,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: isGoalReached
+                                              ? (isDarkMode
+                                                    ? Colors.green.shade300
+                                                    : Colors.green.shade700)
+                                              : null,
+                                        ),
                                   ),
                                 ],
                               ),
                             ] else ...[
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Goal rate:',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                   Text(
-                                    widget.currency.formatMonthly(_goalPricePerMonth, compact: true),
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.primary,
+                                    widget.currency.formatMonthly(
+                                      _goalPricePerMonth,
+                                      compact: true,
                                     ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.primary,
+                                        ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Used rate:',
@@ -605,14 +684,20 @@ class _ItemDialogState extends State<ItemDialog> {
                                   ),
                                   Text(
                                     _currentUsedDuration > 0
-                                        ? widget.currency.formatMonthly(_usedPricePerMonth, compact: true)
+                                        ? widget.currency.formatMonthly(
+                                            _usedPricePerMonth,
+                                            compact: true,
+                                          )
                                         : 'N/A (0 months)',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: isGoalReached
-                                          ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                          : null,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: isGoalReached
+                                              ? (isDarkMode
+                                                    ? Colors.green.shade300
+                                                    : Colors.green.shade700)
+                                              : null,
+                                        ),
                                   ),
                                 ],
                               ),
