@@ -24,8 +24,6 @@ Whether you found a bug or have an idea for an improvement, creating an issue is
 - Check existing issues to make sure your bug or feature request hasn't already been created.
 - Check that you are on the latest version of the app.
 
----
-
 ### Bug Reports
 
 When filing a bug report, please be as precise as possible. Helpful details include:
@@ -34,8 +32,6 @@ When filing a bug report, please be as precise as possible. Helpful details incl
 - **Steps to Reproduce**: What exact steps reproduce the bug?
 - **Expected vs. Actual Behavior**: What did you expect to happen, and what actually happened?
 - **Screenshots/Logs**: Screenshots or error logs (if applicable).
-
----
 
 ### Feature Requests
 
@@ -54,8 +50,6 @@ If you have some programming knowledge, we welcome your direct code contribution
 ### Tips for Getting Started
 - **Start Small**: If it's your first time contributing, look for issues labeled `good first issue`.
 - **Comment First**: Consider commenting on an issue before you start working on it. Share your implementation plan so a maintainer can assign the issue to you—especially for new contributors or large changes.
-
----
 
 ### Development Setup
 
@@ -78,8 +72,6 @@ If you have some programming knowledge, we welcome your direct code contribution
    ```bash
    flutter run
    ```
-
----
 
 ### Git Workflow & Pull Requests
 
