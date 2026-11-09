@@ -339,12 +339,13 @@ class _ItemDialogState extends State<ItemDialog> {
                       ),
                       const SizedBox(height: 4),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 6,
+                        runSpacing: 6,
                         children: [
                           ...widget.categories.map((cat) {
                             final selected = _selectedCategory.id == cat.id;
                             return FilterChip(
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               selected: selected,
                               showCheckmark: false,
                               avatar: Icon(
@@ -373,6 +374,7 @@ class _ItemDialogState extends State<ItemDialog> {
                           }),
                           // Add Category Chip directly among the choices!
                           ActionChip(
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             avatar: const Icon(Icons.add, size: 18),
                             label: const Text('Add Category'),
                             onPressed: _openCreateCategoryDialog,
