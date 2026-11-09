@@ -382,14 +382,16 @@ class _ItemDialogState extends State<ItemDialog> {
                         ],
                       ),
                       const SizedBox(height: 20),
-
+                      Text(
+                        'Usage',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       // Duration section
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
                           // Goal or Running duration
-                          Expanded(
-                            child: TextFormField(
+                            TextFormField(
                               controller: _goalDurationController,
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
@@ -418,11 +420,9 @@ class _ItemDialogState extends State<ItemDialog> {
                                 return null;
                               },
                             ),
-                          ),
-                          const SizedBox(width: 12),
+                          const SizedBox(height: 16),
                           // Used duration
-                          Expanded(
-                            child: TextFormField(
+                            TextFormField(
                               controller: _usedDurationController,
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
@@ -447,9 +447,6 @@ class _ItemDialogState extends State<ItemDialog> {
                                 return null;
                               },
                             ),
-                          ),
-                        ],
-                      ),
                       if (enableDefaultAsUsedFeature) ...[
                         const SizedBox(height: 16),
                         // Default as Used Option
