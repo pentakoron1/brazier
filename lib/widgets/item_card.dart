@@ -56,6 +56,7 @@ Widget continuousProgressBar({
                         sampleGradient(baseGradient, 1),
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(height * 1.2),
                   ),
                 ),
 
