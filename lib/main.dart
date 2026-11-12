@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'models/currency.dart';
 import 'models/item.dart';
+import 'services/backup_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/category_manager_dialog.dart';
@@ -370,6 +371,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _handleImportBackup({
+    List<Item>? items,
+    List<Category>? categories,
+    BackupSettingsData? settings,
+  }) async {
+    setState(() {
+      if (categories != null && categories.isNotEmpty) {
+        final Map<String, Category> catMap = {
+          for (final c in _categories) c.id: c,
+        };
+        for (final c in categories) {
+          catMap[c.id] = c;
+        }
+        _categories = catMap.values.toList();
+        StorageService.saveCategories(_categories);
+      }
+
+      if (items != null) {
+        _items = items;
+        StorageService.saveItems(_items);
+      }
+
+      if (settings != null) {
+        if (settings.themeMode != null) {
+          widget.onThemeModeChanged(settings.themeMode!);
+        }
+        if (settings.localeCode != null) {
+          widget.onLocaleChanged(settings.localeCode!);
+        }
+        if (settings.showSegmentedProgressBar != null) {
+          _showSegmentedProgressBar = settings.showSegmentedProgressBar!;
+          StorageService.saveSegmentedProgressBar(_showSegmentedProgressBar);
+        }
+        if (settings.currency != null) {
+          _currency = settings.currency!;
+          StorageService.saveCurrency(_currency);
+        }
+      }
+    });
+  }
+
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -393,6 +435,9 @@ class _HomeScreenState extends State<HomeScreen> {
             StorageService.saveCurrency(currency);
           },
           onManageCategories: _openCategoryManager,
+          items: _items,
+          categories: _categories,
+          onImportBackup: _handleImportBackup,
         ),
       ),
     );
