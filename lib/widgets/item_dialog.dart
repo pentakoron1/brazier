@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../models/currency.dart';
 import '../models/item.dart';
 import 'category_manager_dialog.dart';
+import 'info_dialog.dart';
 
 class ItemDialog extends StatefulWidget {
   final Item? item;
@@ -100,6 +101,13 @@ class _ItemDialogState extends State<ItemDialog> {
           });
         },
       ),
+    );
+  }
+
+  void _openInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => InfoDialog(),
     );
   }
 
@@ -419,11 +427,24 @@ class _ItemDialogState extends State<ItemDialog> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Text(
-                        'Usage',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Usage',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _openInfoDialog,
+                            icon: const Icon(Icons.info, size: 16),
+                            label: const Text(
+                              'Info',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       // Duration section
