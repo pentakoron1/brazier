@@ -162,6 +162,7 @@ class ItemsDetailScreen extends StatelessWidget {
                           backgroundColor: isDarkMode
                               ? const Color(0xFF28303F)
                               : theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       );
 
@@ -198,7 +199,10 @@ class ItemsDetailScreen extends StatelessWidget {
                                         widthFactor: usedRatio.clamp(0.0, 1.0),
                                         heightFactor: 1,
                                         child: const DecoratedBox(
-                                          decoration: BoxDecoration(gradient: AppGradients.flameGradient),
+                                          decoration: BoxDecoration(
+                                            gradient: AppGradients.flameGradient,
+                                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                                          ),
                                         ),
                                       ),
                                     ),
