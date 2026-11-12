@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
+import '../models/item.dart';
+import '../services/backup_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -12,6 +14,13 @@ class SettingsScreen extends StatefulWidget {
   final Currency currency;
   final ValueChanged<Currency> onCurrencyChanged;
   final VoidCallback onManageCategories;
+  final List<Item> items;
+  final List<Category> categories;
+  final Future<void> Function({
+    List<Item>? items,
+    List<Category>? categories,
+    BackupSettingsData? settings,
+  }) onImportBackup;
 
   const SettingsScreen({
     super.key,
@@ -24,6 +33,9 @@ class SettingsScreen extends StatefulWidget {
     required this.currency,
     required this.onCurrencyChanged,
     required this.onManageCategories,
+    required this.items,
+    required this.categories,
+    required this.onImportBackup,
   });
 
   @override
@@ -129,6 +141,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  void _openExportBackupDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => _ExportBackupDialog(
+        items: widget.items,
+        categories: widget.categories,
+        themeMode: _themeMode,
+        localeCode: _currentLocaleCode,
+        showSegmentedProgressBar: _showSegmentedProgressBar,
+        currency: _currency,
+      ),
+    );
+  }
+
+  Future<void> _handleImportBackup() async {
+    try {
+      final backupData = await BackupService.pickAndParseBackup(widget.categories);
+
+      if (!mounted) return;
+
+      if (backupData == null) {
+        return; // User canceled file picking
+      }
+
+      if (!backupData.hasData) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('The selected CSV file does not contain valid Brazier backup data.'),
+          ),
+        );
+        return;
+      }
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => _ImportPreviewDialog(backupData: backupData),
+      );
+
+      if (confirmed == true && mounted) {
+        await widget.onImportBackup(
+          items: backupData.items,
+          categories: backupData.categories,
+          settings: backupData.settings,
+        );
+
+        if (backupData.settings != null) {
+          setState(() {
+            if (backupData.settings!.themeMode != null) {
+              _themeMode = backupData.settings!.themeMode!;
+            }
+            if (backupData.settings!.localeCode != null) {
+              _currentLocaleCode = backupData.settings!.localeCode!;
+            }
+            if (backupData.settings!.showSegmentedProgressBar != null) {
+              _showSegmentedProgressBar = backupData.settings!.showSegmentedProgressBar!;
+            }
+            if (backupData.settings!.currency != null) {
+              _currency = backupData.settings!.currency!;
+            }
+          });
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Backup imported successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing backup: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -364,9 +459,427 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: widget.onManageCategories,
           ),
+
+          const Divider(height: 1),
+
+          // BACKUP & RESTORE SECTION
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              'BACKUP & RESTORE',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.file_upload_outlined),
+            title: const Text('Export Backup'),
+            subtitle: const Text('Export items and/or settings to an open CSV file'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openExportBackupDialog,
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.file_download_outlined),
+            title: const Text('Import Backup'),
+            subtitle: const Text('Restore items or settings from a CSV backup file'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _handleImportBackup,
+          ),
+
           const Divider(height: 1),
         ],
       ),
+    );
+  }
+}
+
+class _ExportBackupDialog extends StatefulWidget {
+  final List<Item> items;
+  final List<Category> categories;
+  final ThemeMode themeMode;
+  final String localeCode;
+  final bool showSegmentedProgressBar;
+  final Currency currency;
+
+  const _ExportBackupDialog({
+    required this.items,
+    required this.categories,
+    required this.themeMode,
+    required this.localeCode,
+    required this.showSegmentedProgressBar,
+    required this.currency,
+  });
+
+  @override
+  State<_ExportBackupDialog> createState() => _ExportBackupDialogState();
+}
+
+class _ExportBackupDialogState extends State<_ExportBackupDialog> {
+  bool _saveItemsData = true;
+  bool _saveSettings = true;
+
+  void _export() {
+    if (!_saveItemsData && !_saveSettings) return;
+
+    final csvContent = BackupService.createCsvBackup(
+      saveItemsData: _saveItemsData,
+      saveSettings: _saveSettings,
+      items: widget.items,
+      categories: widget.categories,
+      themeMode: widget.themeMode,
+      localeCode: widget.localeCode,
+      showSegmentedProgressBar: widget.showSegmentedProgressBar,
+      currency: widget.currency,
+    );
+
+    final fileName = BackupService.generateFileName();
+
+    Navigator.of(context).pop(); // Close setup dialog
+
+    showDialog(
+      context: context,
+      builder: (context) => _BackupCreatedDialog(
+        csvContent: csvContent,
+        fileName: fileName,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isValid = _saveItemsData || _saveSettings;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.backup_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          const Text('Export Backup'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Choose what information to include in the exported open CSV backup file:',
+            ),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Save items data'),
+              subtitle: Text(
+                'Includes all ${widget.items.length} item(s) and custom categories.',
+              ),
+              value: _saveItemsData,
+              onChanged: (val) {
+                setState(() {
+                  _saveItemsData = val ?? false;
+                });
+              },
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Save settings'),
+              subtitle: const Text(
+                'Includes theme mode, currency, language, and display options.',
+              ),
+              value: _saveSettings,
+              onChanged: (val) {
+                setState(() {
+                  _saveSettings = val ?? false;
+                });
+              },
+            ),
+            if (!isValid) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Please select at least one option to export.',
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: isValid ? _export : null,
+          icon: const Icon(Icons.arrow_forward),
+          label: const Text('Create Backup'),
+        ),
+      ],
+    );
+  }
+}
+
+class _BackupCreatedDialog extends StatefulWidget {
+  final String csvContent;
+  final String fileName;
+
+  const _BackupCreatedDialog({
+    required this.csvContent,
+    required this.fileName,
+  });
+
+  @override
+  State<_BackupCreatedDialog> createState() => _BackupCreatedDialogState();
+}
+
+class _BackupCreatedDialogState extends State<_BackupCreatedDialog> {
+  bool _isSaving = false;
+  bool _isSharing = false;
+
+  Future<void> _handleSaveOnDevice() async {
+    setState(() {
+      _isSaving = true;
+    });
+    try {
+      final success = await BackupService.saveBackupToDevice(
+        csvContent: widget.csvContent,
+        fileName: widget.fileName,
+      );
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        if (success) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Backup saved on device successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleShareFile() async {
+    setState(() {
+      _isSharing = true;
+    });
+    try {
+      await BackupService.shareBackupFile(
+        csvContent: widget.csvContent,
+        fileName: widget.fileName,
+      );
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+          const SizedBox(width: 10),
+          const Text('Backup created!'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your CSV backup file is ready. Choose how you would like to keep your backup:',
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.description_outlined, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.fileName,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: (_isSaving || _isSharing) ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        OutlinedButton.icon(
+          onPressed: (_isSaving || _isSharing) ? null : _handleShareFile,
+          icon: _isSharing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.share_outlined),
+          label: const Text('Share file'),
+        ),
+        FilledButton.icon(
+          onPressed: (_isSaving || _isSharing) ? null : _handleSaveOnDevice,
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.save_alt),
+          label: const Text('Save on device'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImportPreviewDialog extends StatelessWidget {
+  final BackupData backupData;
+
+  const _ImportPreviewDialog({
+    required this.backupData,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasItems = backupData.items != null && backupData.items!.isNotEmpty;
+    final hasSettings = backupData.settings != null && backupData.settings!.hasData;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.download_for_offline_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          const Text('Import Backup'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'The selected CSV file contains valid backup data:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            if (hasItems) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.inventory_2_outlined, color: theme.colorScheme.primary),
+                title: Text('${backupData.items!.length} Items'),
+                subtitle: Text(
+                  'Categories: ${backupData.categories?.length ?? 0} custom categories',
+                ),
+              ),
+            ],
+            if (hasSettings) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.settings_suggest_outlined, color: theme.colorScheme.primary),
+                title: const Text('Application Settings'),
+                subtitle: Text(
+                  [
+                    if (backupData.settings!.themeMode != null)
+                      'Theme: ${backupData.settings!.themeMode!.name}',
+                    if (backupData.settings!.currency != null)
+                      'Currency: ${backupData.settings!.currency!.displayName}',
+                    if (backupData.settings!.localeCode != null)
+                      'Language: ${backupData.settings!.localeCode}',
+                  ].join(' • '),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Importing will update your current application data with the content from the backup file.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context).pop(true),
+          icon: const Icon(Icons.check),
+          label: const Text('Import Now'),
+        ),
+      ],
     );
   }
 }
