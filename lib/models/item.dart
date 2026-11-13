@@ -146,7 +146,9 @@ class Item {
     this.currentMonthUsed,
     this.isDefaultUsed = false,
     this.usageStreak = 0,
-  })  : goalDurationMonths = usedDurationMonths > goalDurationMonths ? usedDurationMonths : goalDurationMonths,
+  })  : goalDurationMonths = (itemType == ItemType.subscription && usedDurationMonths > goalDurationMonths)
+            ? usedDurationMonths
+            : goalDurationMonths,
         usedDurationMonths = usedDurationMonths;
 
   bool get isSubscription => itemType == ItemType.subscription;

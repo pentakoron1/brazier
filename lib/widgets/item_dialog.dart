@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
@@ -80,11 +78,6 @@ class _ItemDialogState extends State<ItemDialog> {
   }
 
   void _updateCalculations() {
-    final used = int.tryParse(_usedDurationController.text) ?? 0;
-    final goal = int.tryParse(_goalDurationController.text) ?? 0;
-    if (used > goal) {
-      _goalDurationController.text = used.toString();
-    }
     setState(() {});
   }
 
@@ -195,15 +188,13 @@ class _ItemDialogState extends State<ItemDialog> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      final goalDuration = max(_currentGoalDuration, _currentUsedDuration);
-
       final newItem = Item(
         id: widget.item?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
         itemType: _selectedItemType,
         price: _currentPrice,
         category: _selectedCategory,
-        goalDurationMonths: goalDuration,
+        goalDurationMonths: _currentGoalDuration,
         usedDurationMonths: _currentUsedDuration,
         lastReviewedMonthKey: widget.item?.lastReviewedMonthKey,
         currentMonthUsed: widget.item?.currentMonthUsed,
@@ -475,9 +466,18 @@ class _ItemDialogState extends State<ItemDialog> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Enter duration';
                           }
-                          final months = int.tryParse(value);
+                          final months = int.tryParse(value.trim());
                           if (months == null || months <= 0) {
                             return 'Min 1 month';
+                          }
+                          if (months > 500) {
+                            return 'maximum value for duration is 500 months';
+                          }
+                          if (_selectedItemType == ItemType.subscription) {
+                            final used = int.tryParse(_usedDurationController.text.trim()) ?? 0;
+                            if (months < used) {
+                              return 'Used duration cannot be bigger than the running duration';
+                            }
                           }
                           return null;
                         },
@@ -504,9 +504,18 @@ class _ItemDialogState extends State<ItemDialog> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Enter duration';
                           }
-                          final months = int.tryParse(value);
+                          final months = int.tryParse(value.trim());
                           if (months == null || months < 0) {
                             return 'Cannot be negative';
+                          }
+                          if (months > 500) {
+                            return 'maximum value for duration is 500 months';
+                          }
+                          if (_selectedItemType == ItemType.subscription) {
+                            final goal = int.tryParse(_goalDurationController.text.trim()) ?? 0;
+                            if (months > goal) {
+                              return 'running duration has to be bigger than used duration';
+                            }
                           }
                           return null;
                         },
@@ -607,10 +616,13 @@ class _ItemDialogState extends State<ItemDialog> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Total cost running:',
-                                    style: theme.textTheme.bodyMedium,
+                                  Flexible(
+                                    child: Text(
+                                      'Total cost running:',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     widget.currency.format(
                                       _currentPrice * _currentGoalDuration,
@@ -625,10 +637,13 @@ class _ItemDialogState extends State<ItemDialog> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Monthly fee:',
-                                    style: theme.textTheme.bodyMedium,
+                                  Flexible(
+                                    child: Text(
+                                      'Monthly fee:',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     widget.currency.formatMonthly(
                                       _currentPrice,
@@ -647,10 +662,13 @@ class _ItemDialogState extends State<ItemDialog> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Actual cost / used mo:',
-                                    style: theme.textTheme.bodyMedium,
+                                  Flexible(
+                                    child: Text(
+                                      'Actual cost / used mo:',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     _currentUsedDuration > 0
                                         ? widget.currency.formatMonthly(
@@ -677,10 +695,13 @@ class _ItemDialogState extends State<ItemDialog> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Goal rate:',
-                                    style: theme.textTheme.bodyMedium,
+                                  Flexible(
+                                    child: Text(
+                                      'Goal rate:',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     widget.currency.formatMonthly(
                                       _goalPricePerMonth,
@@ -699,10 +720,13 @@ class _ItemDialogState extends State<ItemDialog> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Used rate:',
-                                    style: theme.textTheme.bodyMedium,
+                                  Flexible(
+                                    child: Text(
+                                      'Used rate:',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     _currentUsedDuration > 0
                                         ? widget.currency.formatMonthly(
