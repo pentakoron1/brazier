@@ -6,6 +6,7 @@ import '../models/item.dart';
 import '../theme/app_theme.dart';
 
 const Color fireOrange = AppColors.fireOrange; // Single unified Fire Orange Accent from AppTheme
+
 /// Label + bar + value. Switches to a stacked layout when space is tight.
 class _MetricRow extends StatelessWidget {
   final String label;
@@ -60,6 +61,7 @@ class _MetricRow extends StatelessWidget {
     );
   }
 }
+
 class ItemsDetailScreen extends StatelessWidget {
   final String title;
   final List<Item> items;
@@ -73,6 +75,261 @@ class ItemsDetailScreen extends StatelessWidget {
     this.category,
     this.currency = Currency.euro,
   });
+
+  void _showCostExplanationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: fireOrange),
+            SizedBox(width: 8),
+            Text('Monthly Cost Metrics'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Target Monthly Cost:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'The total planned monthly cost if every item is used for its goal duration.',
+                style: TextStyle(fontSize: 13),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Current Monthly Cost:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'The sum of current monthly cost rates across all items in this list.',
+                style: TextStyle(fontSize: 13),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Active Monthly Cost:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'The sum of current monthly costs for ONLY the items you currently use this month. Items not used this month are excluded because you do not incur active usage cost for them. Subscriptions are always counted in the active cost, as you always have to pay for them.',
+                style: TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryTable(BuildContext context, ThemeData theme, bool isDarkMode) {
+    final targetCost = items.fold(0.0, (sum, i) => sum + i.goalPricePerMonth);
+    final currentCost = items.fold(
+      0.0,
+      (sum, i) => sum + (i.usedDurationMonths > 0 ? i.usedPricePerMonth : i.goalPricePerMonth),
+    );
+    final activeCost = items.where((i) => i.isCurrentlyUsed).fold(
+      0.0,
+      (sum, i) => sum + (i.usedDurationMonths > 0 ? i.usedPricePerMonth : i.goalPricePerMonth),
+    );
+    final activeCount = items.where((i) => i.isCurrentlyUsed).length;
+
+    Widget buildMetricColumn({
+      required String label,
+      required String value,
+      required String subtitle,
+      required Color color,
+      required IconData icon,
+      required VoidCallback onTapInfo,
+    }) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDarkMode
+                ? const Color(0xFF232C3A)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 15, color: color),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade800,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF1C2330) : theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDarkMode ? const Color(0xFF2B3648) : theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.analytics_outlined, size: 20, color: fireOrange),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Monthly Cost Breakdown',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.info_outline, size: 20),
+                tooltip: 'How metrics are calculated',
+                onPressed: () => _showCostExplanationDialog(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 400;
+
+              if (isCompact) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        buildMetricColumn(
+                          label: 'Target Cost',
+                          value: currency.formatMonthly(targetCost, compact: true),
+                          subtitle: 'Goal rate',
+                          color: theme.colorScheme.primary,
+                          icon: Icons.flag_outlined,
+                          onTapInfo: () => _showCostExplanationDialog(context),
+                        ),
+                        const SizedBox(width: 8),
+                        buildMetricColumn(
+                          label: 'Current Cost',
+                          value: currency.formatMonthly(currentCost, compact: true),
+                          subtitle: 'All ${items.length} items',
+                          color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade800,
+                          icon: Icons.calculate_outlined,
+                          onTapInfo: () => _showCostExplanationDialog(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        buildMetricColumn(
+                          label: 'Active Cost',
+                          value: currency.formatMonthly(activeCost, compact: true),
+                          subtitle: '$activeCount currently used',
+                          color: fireOrange,
+                          icon: Icons.local_fire_department_outlined,
+                          onTapInfo: () => _showCostExplanationDialog(context),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  buildMetricColumn(
+                    label: 'Target Cost',
+                    value: currency.formatMonthly(targetCost, compact: true),
+                    subtitle: 'Goal rate',
+                    color: theme.colorScheme.primary,
+                    icon: Icons.flag_outlined,
+                    onTapInfo: () => _showCostExplanationDialog(context),
+                  ),
+                  const SizedBox(width: 8),
+                  buildMetricColumn(
+                    label: 'Current Cost',
+                    value: currency.formatMonthly(currentCost, compact: true),
+                    subtitle: 'All ${items.length} items',
+                    color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade800,
+                    icon: Icons.calculate_outlined,
+                    onTapInfo: () => _showCostExplanationDialog(context),
+                  ),
+                  const SizedBox(width: 8),
+                  buildMetricColumn(
+                    label: 'Active Cost',
+                    value: currency.formatMonthly(activeCost, compact: true),
+                    subtitle: '$activeCount active',
+                    color: fireOrange,
+                    icon: Icons.local_fire_department_outlined,
+                    onTapInfo: () => _showCostExplanationDialog(context),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,11 +377,15 @@ class ItemsDetailScreen extends StatelessWidget {
               ),
             )
           : ListView.separated(
-              itemCount: items.length,
+              itemCount: items.length + 1,
               padding: const EdgeInsets.all(16),
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final item = items[index];
+                if (index == 0) {
+                  return _buildSummaryTable(context, theme, isDarkMode);
+                }
+
+                final item = items[index - 1];
                 final cat = item.category;
 
                 // Total Price ratio (scaled to maxPrice)
@@ -237,7 +498,7 @@ class ItemsDetailScreen extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header row (unchanged)
+                          // Header row
                           Row(
                             children: [
                               CircleAvatar(

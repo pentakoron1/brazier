@@ -23,6 +23,7 @@ class SummaryCard extends StatelessWidget {
     final totalSpent = items.fold(0.0, (sum, item) => sum + item.effectiveTotalPrice);
     final totalGoalPerMonth = items.fold(0.0, (sum, item) => sum + item.goalPricePerMonth);
     final totalUsedPerMonth = items.fold(0.0, (sum, item) => sum + item.usedPricePerMonth);
+
     final reachedGoals = items.where((item) => item.isGoalReached).length;
 
     const vermilionFire = Color(0xFFFF4500);
@@ -65,13 +66,15 @@ class SummaryCard extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    Flexible( // or Flexible
-                      child: Text('Overview Summary',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                    Flexible(
+                      child: Text(
+                        'Overview Summary',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
                           color: Colors.white.withValues(alpha: 0.95),
-                          fontWeight: FontWeight.bold,),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     if (onTap != null) ...[

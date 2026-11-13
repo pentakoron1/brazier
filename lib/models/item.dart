@@ -239,6 +239,18 @@ class Item {
     return MonthlyReviewStatus.pending;
   }
 
+  /// Whether the item is currently active / used in the current month.
+  bool get isCurrentlyUsed {
+    if (currentMonthlyStatus == MonthlyReviewStatus.used) {
+      return true;
+    }
+    if (currentMonthlyStatus == MonthlyReviewStatus.notUsed) {
+      return false;
+    }
+    // Pending status: considered active if it's a subscription
+    return isSubscription;
+  }
+
   /// Calculates the target price per month.
   /// For Single Purchase: `price / goalDurationMonths`
   /// For Subscription: `price` (the monthly fee)
