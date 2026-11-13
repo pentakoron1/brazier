@@ -101,6 +101,20 @@ class SteppedProgressBar extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
+    final unfilledColor = isDarkMode
+        ? const Color(0xFF28303F)
+        : theme.colorScheme.surfaceContainerHighest;
+
+    if (goalMonths > 100) {
+      final ratio = goalMonths > 0 ? usedMonths / goalMonths : 0.0;
+      return continuousProgressBar(
+        ratio: ratio,
+        trackColor: unfilledColor,
+        height: minHeight,
+        baseGradient: baseGradient,
+      );
+    }
+
     final steps = goalMonths > 0 ? goalMonths : 1;
     final used = usedMonths < 0 ? 0 : usedMonths;
     final goalReached = used >= steps;
@@ -108,10 +122,6 @@ class SteppedProgressBar extends StatelessWidget {
     // Index of the newest filled step (the head).
     // Equivalent to the continuous bar's head = ratio % 1 (1 at a full cycle).
     final headIndex = used == 0 ? -1 : (used - 1) % steps;
-
-    final unfilledColor = isDarkMode
-        ? const Color(0xFF28303F)
-        : theme.colorScheme.surfaceContainerHighest;
 
     final gap = steps > 16 ? 1.5 : 2.5;
 
@@ -660,7 +670,7 @@ class ItemCard extends StatelessWidget {
                 const SizedBox(height: 6),
 
                 // Progress Bar (Stepped Segmented vs Continuous Linear)
-                showSegmentedProgressBar
+                (showSegmentedProgressBar && item.goalDurationMonths <= 100)
                     ? SteppedProgressBar(
                         goalMonths: item.goalDurationMonths,
                         usedMonths: item.usedDurationMonths,
@@ -956,7 +966,7 @@ class CompactItemCard extends StatelessWidget {
                 const SizedBox(height: 6),
 
                 // Progress Bar (Stepped Segmented vs Continuous Linear)
-                showSegmentedProgressBar
+                (showSegmentedProgressBar && item.goalDurationMonths <= 100)
                     ? SteppedProgressBar(
                   goalMonths: item.goalDurationMonths,
                   usedMonths: item.usedDurationMonths,
