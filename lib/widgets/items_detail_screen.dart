@@ -300,7 +300,7 @@ class ItemsDetailScreen extends StatelessWidget {
                     label: 'Target Cost',
                     value: currency.formatMonthly(targetCost, compact: true),
                     subtitle: 'Goal rate',
-                    color: theme.colorScheme.primary,
+                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
                     icon: Icons.flag_outlined,
                     onTapInfo: () => _showCostExplanationDialog(context),
                   ),
