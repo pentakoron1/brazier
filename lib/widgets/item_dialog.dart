@@ -470,8 +470,8 @@ class _ItemDialogState extends State<ItemDialog> {
                           if (months == null || months <= 0) {
                             return 'Min 1 month';
                           }
-                          if (months > 500) {
-                            return 'maximum value for duration is 500 months';
+                          if (months > 1000) {
+                            return 'maximum value for duration is 1000 months';
                           }
                           if (_selectedItemType == ItemType.subscription) {
                             final used = int.tryParse(_usedDurationController.text.trim()) ?? 0;
