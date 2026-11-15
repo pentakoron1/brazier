@@ -18,10 +18,14 @@ void main() {
             searchQuery: 'Nonexistent',
             selectedCategoryIds: const {'clothes'},
             showOnlyGoalReached: false,
+            maxItemPrice: 500.0,
+            minPriceFilter: null,
+            maxPriceFilter: null,
             currency: Currency.euro,
             onSearchQueryChanged: (_) {},
             onCategoryFilterChanged: (_) {},
             onGoalFilterChanged: (_) {},
+            onPriceFilterChanged: (minP, maxP) {},
             onResetFilters: () {
               resetCalled = true;
             },

@@ -276,8 +276,17 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   Set<String> _selectedCategoryIds = {};
   bool _showOnlyGoalReached = false;
+  double? _minPriceFilter;
+  double? _maxPriceFilter;
+
+  double get _maxItemPrice {
+    if (_items.isEmpty) return 100.0;
+    final maxP = _items.fold(0.0, (maxVal, item) => item.price > maxVal ? item.price : maxVal);
+    return maxP > 0 ? maxP : 100.0;
+  }
 
   List<Item> get _filteredItems {
+    final maxP = _maxItemPrice;
     return _items.where((item) {
       final matchesQuery = _searchQuery.isEmpty ||
           item.name.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -285,7 +294,11 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedCategoryIds.contains(item.category.id);
       final matchesGoalFilter = !_showOnlyGoalReached || item.isGoalReached;
 
-      return matchesQuery && matchesCategory && matchesGoalFilter;
+      final minP = _minPriceFilter ?? 0.0;
+      final maxPFilter = _maxPriceFilter ?? maxP;
+      final matchesPrice = item.price >= minP && item.price <= (maxPFilter + 0.01);
+
+      return matchesQuery && matchesCategory && matchesGoalFilter && matchesPrice;
     }).toList();
   }
 
@@ -294,6 +307,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchQuery = '';
       _selectedCategoryIds = {};
       _showOnlyGoalReached = false;
+      _minPriceFilter = null;
+      _maxPriceFilter = null;
     });
   }
 
@@ -644,6 +659,9 @@ class _HomeScreenState extends State<HomeScreen> {
               searchQuery: _searchQuery,
               selectedCategoryIds: _selectedCategoryIds,
               showOnlyGoalReached: _showOnlyGoalReached,
+              maxItemPrice: _maxItemPrice,
+              minPriceFilter: _minPriceFilter,
+              maxPriceFilter: _maxPriceFilter,
               showSegmentedProgressBar: _showSegmentedProgressBar,
               currency: _currency,
               onSearchQueryChanged: (query) {
@@ -659,6 +677,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onGoalFilterChanged: (goalOnly) {
                 setState(() {
                   _showOnlyGoalReached = goalOnly;
+                });
+              },
+              onPriceFilterChanged: (minP, maxP) {
+                setState(() {
+                  _minPriceFilter = minP;
+                  _maxPriceFilter = maxP;
                 });
               },
               onResetFilters: _resetFilters,

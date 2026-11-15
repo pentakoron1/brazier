@@ -13,11 +13,15 @@ class ItemsView extends StatefulWidget {
   final String searchQuery;
   final Set<String> selectedCategoryIds;
   final bool showOnlyGoalReached;
+  final double maxItemPrice;
+  final double? minPriceFilter;
+  final double? maxPriceFilter;
   final bool showSegmentedProgressBar;
   final Currency currency;
   final ValueChanged<String> onSearchQueryChanged;
   final ValueChanged<Set<String>> onCategoryFilterChanged;
   final ValueChanged<bool> onGoalFilterChanged;
+  final Function(double? minP, double? maxP) onPriceFilterChanged;
   final VoidCallback onResetFilters;
   final ValueChanged<Item> onEditItem;
   final ValueChanged<String> onDeleteItem;
@@ -31,11 +35,15 @@ class ItemsView extends StatefulWidget {
     required this.searchQuery,
     required this.selectedCategoryIds,
     required this.showOnlyGoalReached,
+    required this.maxItemPrice,
+    required this.minPriceFilter,
+    required this.maxPriceFilter,
     this.showSegmentedProgressBar = true,
     this.currency = Currency.euro,
     required this.onSearchQueryChanged,
     required this.onCategoryFilterChanged,
     required this.onGoalFilterChanged,
+    required this.onPriceFilterChanged,
     required this.onResetFilters,
     required this.onEditItem,
     required this.onDeleteItem,
@@ -78,8 +86,13 @@ class _ItemsViewState extends State<ItemsView> {
         categories: widget.categories,
         selectedCategoryIds: widget.selectedCategoryIds,
         showOnlyGoalReached: widget.showOnlyGoalReached,
+        maxItemPrice: widget.maxItemPrice,
+        minPriceFilter: widget.minPriceFilter,
+        maxPriceFilter: widget.maxPriceFilter,
+        currency: widget.currency,
         onCategoryFilterChanged: widget.onCategoryFilterChanged,
         onGoalFilterChanged: widget.onGoalFilterChanged,
+        onPriceFilterChanged: widget.onPriceFilterChanged,
         onResetFilters: widget.onResetFilters,
       ),
     );
@@ -161,7 +174,14 @@ class _ItemsViewState extends State<ItemsView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSearching = _searchFocusNode.hasFocus || widget.searchQuery.isNotEmpty;
-    final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) + widget.selectedCategoryIds.length;
+
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
+    final isPriceFiltered = (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
+        (widget.maxPriceFilter != null && widget.maxPriceFilter! < (maxLimit - 0.01));
+
+    final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) +
+        widget.selectedCategoryIds.length +
+        (isPriceFiltered ? 1 : 0);
 
     return Column(
       children: [
@@ -211,7 +231,7 @@ class _ItemsViewState extends State<ItemsView> {
                     : null,
                 tooltip: activeFilterCount > 0
                     ? 'Filters ($activeFilterCount active)'
-                    : 'Filter Categories & Status',
+                    : 'Filter Categories, Price & Status',
                 icon: Badge(
                   isLabelVisible: activeFilterCount > 0,
                   label: Text('$activeFilterCount'),
@@ -266,7 +286,7 @@ class _ItemsViewState extends State<ItemsView> {
                         if (widget.searchQuery.isNotEmpty || activeFilterCount > 0) ...[
                           const SizedBox(height: 6),
                           Text(
-                            'Try adjusting your search query or category filters.',
+                            'Try adjusting your search query, price range, or category filters.',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.outline,
@@ -344,16 +364,26 @@ class _FilterBottomSheet extends StatefulWidget {
   final List<Category> categories;
   final Set<String> selectedCategoryIds;
   final bool showOnlyGoalReached;
+  final double maxItemPrice;
+  final double? minPriceFilter;
+  final double? maxPriceFilter;
+  final Currency currency;
   final ValueChanged<Set<String>> onCategoryFilterChanged;
   final ValueChanged<bool> onGoalFilterChanged;
+  final Function(double? minP, double? maxP) onPriceFilterChanged;
   final VoidCallback onResetFilters;
 
   const _FilterBottomSheet({
     required this.categories,
     required this.selectedCategoryIds,
     required this.showOnlyGoalReached,
+    required this.maxItemPrice,
+    required this.minPriceFilter,
+    required this.maxPriceFilter,
+    required this.currency,
     required this.onCategoryFilterChanged,
     required this.onGoalFilterChanged,
+    required this.onPriceFilterChanged,
     required this.onResetFilters,
   });
 
@@ -364,24 +394,42 @@ class _FilterBottomSheet extends StatefulWidget {
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late Set<String> _tempCategoryIds;
   late bool _tempGoalReached;
+  late double _tempMinPrice;
+  late double _tempMaxPrice;
 
   @override
   void initState() {
     super.initState();
     _tempCategoryIds = Set.from(widget.selectedCategoryIds);
     _tempGoalReached = widget.showOnlyGoalReached;
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
+    _tempMinPrice = widget.minPriceFilter ?? 0.0;
+    _tempMaxPrice = widget.maxPriceFilter ?? maxLimit;
   }
 
   void _clearAll() {
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     setState(() {
       _tempCategoryIds.clear();
       _tempGoalReached = false;
+      _tempMinPrice = 0.0;
+      _tempMaxPrice = maxLimit;
     });
   }
 
   void _apply() {
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     widget.onCategoryFilterChanged(_tempCategoryIds);
     widget.onGoalFilterChanged(_tempGoalReached);
+
+    final isDefaultMin = _tempMinPrice <= 0.01;
+    final isDefaultMax = _tempMaxPrice >= (maxLimit - 0.01);
+
+    widget.onPriceFilterChanged(
+      isDefaultMin ? null : _tempMinPrice,
+      isDefaultMax ? null : _tempMaxPrice,
+    );
+
     Navigator.of(context).pop();
   }
 
@@ -389,6 +437,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
+    final currentMin = _tempMinPrice.clamp(0.0, maxLimit);
+    final currentMax = _tempMaxPrice.clamp(currentMin, maxLimit);
+
+    final isPriceFiltered = _tempMinPrice > 0.01 || _tempMaxPrice < (maxLimit - 0.01);
+    final noCategorySelected = _tempCategoryIds.isEmpty;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -419,7 +474,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   ),
                 ),
               ),
-              if (_tempCategoryIds.isNotEmpty || _tempGoalReached)
+              if (_tempCategoryIds.isNotEmpty || _tempGoalReached || isPriceFiltered)
                 TextButton(
                   onPressed: _clearAll,
                   child: const Text('Clear All'),
@@ -436,6 +491,50 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Price Range Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'PRICE RANGE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${widget.currency.format(currentMin)} – ${widget.currency.format(currentMax)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isPriceFiltered
+                              ? theme.colorScheme.primary
+                              : (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  RangeSlider(
+                    values: RangeValues(currentMin, currentMax),
+                    min: 0.0,
+                    max: maxLimit,
+                    activeColor: theme.colorScheme.primary,
+                    inactiveColor: isDarkMode
+                        ? const Color(0xFF28303F)
+                        : theme.colorScheme.surfaceContainerHighest,
+                    labels: RangeLabels(
+                      widget.currency.format(currentMin),
+                      widget.currency.format(currentMax),
+                    ),
+                    onChanged: (RangeValues values) {
+                      setState(() {
+                        _tempMinPrice = values.start;
+                        _tempMaxPrice = values.end;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
                   // Status Filter Section
                   Text(
                     'STATUS',
@@ -479,25 +578,31 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         ),
                       ),
                       Text(
-                        _tempCategoryIds.isEmpty
-                            ? 'All Categories'
+                        noCategorySelected
+                            ? 'All Categories (Default)'
                             : '${_tempCategoryIds.length} selected',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
+                          color: noCategorySelected
+                              ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
+                              : theme.colorScheme.primary,
+                          fontWeight: noCategorySelected ? FontWeight.normal : FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   ...widget.categories.map((cat) {
-                    final isSelected = _tempCategoryIds.contains(cat.id);
+                    final isExplicitlySelected = _tempCategoryIds.contains(cat.id);
+                    final isChecked = noCategorySelected || isExplicitlySelected;
+                    final isGrayCheck = noCategorySelected;
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6.0),
                       child: CheckboxListTile(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        tileColor: isSelected
+                        tileColor: isExplicitlySelected
                             ? (isDarkMode
                                 ? theme.colorScheme.primary.withValues(alpha: 0.15)
                                 : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
@@ -507,7 +612,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         title: Text(
                           cat.displayName,
                           style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isExplicitlySelected ? FontWeight.bold : FontWeight.normal,
+                            color: isGrayCheck ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
                           ),
                         ),
                         secondary: CircleAvatar(
@@ -515,13 +621,23 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           backgroundColor: cat.color.withValues(alpha: isDarkMode ? 0.25 : 0.15),
                           child: Icon(cat.icon, size: 16, color: cat.color),
                         ),
-                        value: isSelected,
+                        activeColor: isGrayCheck
+                            ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
+                            : theme.colorScheme.primary,
+                        checkColor: isGrayCheck
+                            ? (isDarkMode ? Colors.grey.shade900 : Colors.white)
+                            : theme.colorScheme.onPrimary,
+                        value: isChecked,
                         onChanged: (val) {
                           setState(() {
-                            if (val == true) {
-                              _tempCategoryIds.add(cat.id);
+                            if (noCategorySelected) {
+                              _tempCategoryIds = {cat.id};
                             } else {
-                              _tempCategoryIds.remove(cat.id);
+                              if (val == true) {
+                                _tempCategoryIds.add(cat.id);
+                              } else {
+                                _tempCategoryIds.remove(cat.id);
+                              }
                             }
                           });
                         },
