@@ -575,19 +575,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String get _appBarTitle {
-    switch (_currentTabIndex) {
-      case 0:
-        return 'Brazier Items';
-      case 1:
-        return 'Monthly Review';
-      case 2:
-        return 'Overview & Statistics';
-      default:
-        return 'Brazier';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -605,42 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       extendBody: true,
-      appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface,
-        scrolledUnderElevation: 0.0,
-        surfaceTintColor: Colors.transparent,
-        notificationPredicate: (ScrollNotification notification) => false,
-        title: Row(
-          children: [
-            Image.asset(
-              'asset/icon/logo.png',
-              height: 28,
-              width: 28,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.local_fire_department, color: AppColors.primaryOrange),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _appBarTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: _openSettings,
-          ),
-        ],
-      ),
+      appBar: null,
       body: SafeArea(
         bottom: false,
         child: IndexedStack(
@@ -680,6 +632,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               },
               onResetFilters: _resetFilters,
+              onOpenSettings: _openSettings,
               onEditItem: _openEditDialog,
               onDeleteItem: _deleteItem,
               onUpdateMonthlyStatus: _updateMonthlyStatus,
@@ -692,6 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
               currency: _currency,
               onReviewItem: _handleReviewItem,
               onResetAllReviews: _resetAllReviews,
+              onOpenSettings: _openSettings,
             ),
 
             // TAB 2: Statistics View

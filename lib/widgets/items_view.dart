@@ -23,6 +23,7 @@ class ItemsView extends StatefulWidget {
   final ValueChanged<bool> onGoalFilterChanged;
   final Function(double? minP, double? maxP) onPriceFilterChanged;
   final VoidCallback onResetFilters;
+  final VoidCallback onOpenSettings;
   final ValueChanged<Item> onEditItem;
   final ValueChanged<String> onDeleteItem;
   final Function(Item item, MonthlyReviewStatus status) onUpdateMonthlyStatus;
@@ -45,6 +46,7 @@ class ItemsView extends StatefulWidget {
     required this.onGoalFilterChanged,
     required this.onPriceFilterChanged,
     required this.onResetFilters,
+    required this.onOpenSettings,
     required this.onEditItem,
     required this.onDeleteItem,
     required this.onUpdateMonthlyStatus,
@@ -250,6 +252,14 @@ class _ItemsViewState extends State<ItemsView> {
                     _isCompactView = !_isCompactView;
                   });
                 },
+              ),
+              const SizedBox(width: 6),
+
+              // Settings Button
+              IconButton.filledTonal(
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: widget.onOpenSettings,
               ),
             ],
           ),

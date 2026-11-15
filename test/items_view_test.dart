@@ -29,6 +29,7 @@ void main() {
             onResetFilters: () {
               resetCalled = true;
             },
+            onOpenSettings: () {},
             onEditItem: (_) {},
             onDeleteItem: (_) {},
             onUpdateMonthlyStatus: (item, status) {},
