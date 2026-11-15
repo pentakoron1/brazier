@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/currency.dart';
 import '../models/item.dart';
@@ -11,13 +11,14 @@ class ItemsView extends StatefulWidget {
   final List<Item> items;
   final List<Category> categories;
   final String searchQuery;
-  final Category? selectedCategoryFilter;
+  final Set<String> selectedCategoryIds;
   final bool showOnlyGoalReached;
   final bool showSegmentedProgressBar;
   final Currency currency;
   final ValueChanged<String> onSearchQueryChanged;
-  final ValueChanged<Category?> onCategoryFilterChanged;
+  final ValueChanged<Set<String>> onCategoryFilterChanged;
   final ValueChanged<bool> onGoalFilterChanged;
+  final VoidCallback onResetFilters;
   final ValueChanged<Item> onEditItem;
   final ValueChanged<String> onDeleteItem;
   final Function(Item item, MonthlyReviewStatus status) onUpdateMonthlyStatus;
@@ -28,13 +29,14 @@ class ItemsView extends StatefulWidget {
     required this.items,
     required this.categories,
     required this.searchQuery,
-    required this.selectedCategoryFilter,
+    required this.selectedCategoryIds,
     required this.showOnlyGoalReached,
     this.showSegmentedProgressBar = true,
     this.currency = Currency.euro,
     required this.onSearchQueryChanged,
     required this.onCategoryFilterChanged,
     required this.onGoalFilterChanged,
+    required this.onResetFilters,
     required this.onEditItem,
     required this.onDeleteItem,
     required this.onUpdateMonthlyStatus,
@@ -47,6 +49,41 @@ class ItemsView extends StatefulWidget {
 
 class _ItemsViewState extends State<ItemsView> {
   bool _isCompactView = false;
+  late FocusNode _searchFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocusNode = FocusNode();
+    _searchFocusNode.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _openFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _FilterBottomSheet(
+        categories: widget.categories,
+        selectedCategoryIds: widget.selectedCategoryIds,
+        showOnlyGoalReached: widget.showOnlyGoalReached,
+        onCategoryFilterChanged: widget.onCategoryFilterChanged,
+        onGoalFilterChanged: widget.onGoalFilterChanged,
+        onResetFilters: widget.onResetFilters,
+      ),
+    );
+  }
 
   Widget _buildItemCard(Item item) {
     return _isCompactView
@@ -123,6 +160,8 @@ class _ItemsViewState extends State<ItemsView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isSearching = _searchFocusNode.hasFocus || widget.searchQuery.isNotEmpty;
+    final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) + widget.selectedCategoryIds.length;
 
     return Column(
       children: [
@@ -130,90 +169,67 @@ class _ItemsViewState extends State<ItemsView> {
         // Search & View Mode Toggle Section
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  // Search Bar
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search items...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: widget.searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => widget.onSearchQueryChanged(''),
-                              )
-                            : null,
-                        filled: true,
-                        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
+              // Search Bar with Expansion when focused/typing
+              Expanded(
+                flex: isSearching ? 3 : 2,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  child: TextField(
+                    focusNode: _searchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Search items...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: widget.searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => widget.onSearchQueryChanged(''),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
-                      onChanged: widget.onSearchQueryChanged,
                     ),
+                    onChanged: widget.onSearchQueryChanged,
                   ),
-                  const SizedBox(width: 8),
-
-                  // Compact / Detailed View Toggle Button
-                  IconButton.filledTonal(
-                    tooltip: _isCompactView ? 'Switch to Detailed View' : 'Switch to Compact View',
-                    icon: Icon(_isCompactView ? Icons.view_agenda_outlined : Icons.view_headline),
-                    onPressed: () {
-                      setState(() {
-                        _isCompactView = !_isCompactView;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Category Filter Chips
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: const Text('All Categories'),
-                      selected: widget.selectedCategoryFilter == null && !widget.showOnlyGoalReached,
-                      onSelected: (selected) {
-                        if (selected) {
-                          widget.onCategoryFilterChanged(null);
-                          widget.onGoalFilterChanged(false);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    FilterChip(
-                      avatar: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Goal Reached'),
-                      selected: widget.showOnlyGoalReached,
-                      onSelected: (selected) {
-                        widget.onGoalFilterChanged(selected);
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ...widget.categories.map((cat) {
-                      final selected = widget.selectedCategoryFilter?.id == cat.id;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: FilterChip(
-                          avatar: Icon(cat.icon, size: 16, color: selected ? null : cat.color),
-                          label: Text(cat.displayName),
-                          selected: selected,
-                          onSelected: (isSelected) {
-                            widget.onCategoryFilterChanged(isSelected ? cat : null);
-                          },
-                        ),
-                      );
-                    }),
-                  ],
                 ),
+              ),
+              const SizedBox(width: 8),
+
+              // Multi-Select Filter Dropdown Button
+              IconButton.filledTonal(
+                style: activeFilterCount > 0
+                    ? IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        foregroundColor: theme.colorScheme.onPrimaryContainer,
+                      )
+                    : null,
+                tooltip: activeFilterCount > 0
+                    ? 'Filters ($activeFilterCount active)'
+                    : 'Filter Categories & Status',
+                icon: Badge(
+                  isLabelVisible: activeFilterCount > 0,
+                  label: Text('$activeFilterCount'),
+                  child: const Icon(Icons.filter_list),
+                ),
+                onPressed: () => _openFilterBottomSheet(context),
+              ),
+              const SizedBox(width: 6),
+
+              // Compact / Detailed View Toggle Button
+              IconButton.filledTonal(
+                tooltip: _isCompactView ? 'Switch to Detailed View' : 'Switch to Compact View',
+                icon: Icon(_isCompactView ? Icons.view_agenda_outlined : Icons.view_headline),
+                onPressed: () {
+                  setState(() {
+                    _isCompactView = !_isCompactView;
+                  });
+                },
               ),
             ],
           ),
@@ -224,23 +240,47 @@ class _ItemsViewState extends State<ItemsView> {
         Expanded(
           child: widget.items.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 64,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No items match your filters.\nTap "+" to add a new item!',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge?.copyWith(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          (widget.searchQuery.isNotEmpty || activeFilterCount > 0)
+                              ? Icons.filter_alt_off_outlined
+                              : Icons.inventory_2_outlined,
+                          size: 64,
                           color: theme.colorScheme.outline,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        Text(
+                          (widget.searchQuery.isNotEmpty || activeFilterCount > 0)
+                              ? 'No items match your active filters.'
+                              : 'No items added yet.\nTap "+" to add a new item!',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        if (widget.searchQuery.isNotEmpty || activeFilterCount > 0) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Try adjusting your search query or category filters.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            onPressed: widget.onResetFilters,
+                            icon: const Icon(Icons.restart_alt),
+                            label: const Text('Reset Filters'),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 )
               : LayoutBuilder(
@@ -296,6 +336,220 @@ class _ItemsViewState extends State<ItemsView> {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _FilterBottomSheet extends StatefulWidget {
+  final List<Category> categories;
+  final Set<String> selectedCategoryIds;
+  final bool showOnlyGoalReached;
+  final ValueChanged<Set<String>> onCategoryFilterChanged;
+  final ValueChanged<bool> onGoalFilterChanged;
+  final VoidCallback onResetFilters;
+
+  const _FilterBottomSheet({
+    required this.categories,
+    required this.selectedCategoryIds,
+    required this.showOnlyGoalReached,
+    required this.onCategoryFilterChanged,
+    required this.onGoalFilterChanged,
+    required this.onResetFilters,
+  });
+
+  @override
+  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+}
+
+class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+  late Set<String> _tempCategoryIds;
+  late bool _tempGoalReached;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempCategoryIds = Set.from(widget.selectedCategoryIds);
+    _tempGoalReached = widget.showOnlyGoalReached;
+  }
+
+  void _clearAll() {
+    setState(() {
+      _tempCategoryIds.clear();
+      _tempGoalReached = false;
+    });
+  }
+
+  void _apply() {
+    widget.onCategoryFilterChanged(_tempCategoryIds);
+    widget.onGoalFilterChanged(_tempGoalReached);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.filter_list,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Filter Items',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (_tempCategoryIds.isNotEmpty || _tempGoalReached)
+                TextButton(
+                  onPressed: _clearAll,
+                  child: const Text('Clear All'),
+                ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Status Filter Section
+                  Text(
+                    'STATUS',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    tileColor: isDarkMode
+                        ? const Color(0xFF222B38)
+                        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    title: const Text('Goal Reached Only'),
+                    subtitle: const Text('Show only items that met or exceeded goal duration'),
+                    secondary: Icon(
+                      Icons.check_circle_outline,
+                      color: _tempGoalReached ? theme.colorScheme.primary : null,
+                    ),
+                    value: _tempGoalReached,
+                    onChanged: (val) {
+                      setState(() {
+                        _tempGoalReached = val ?? false;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Categories Filter Section (Multiple Choice)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'CATEGORIES',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _tempCategoryIds.isEmpty
+                            ? 'All Categories'
+                            : '${_tempCategoryIds.length} selected',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ...widget.categories.map((cat) {
+                    final isSelected = _tempCategoryIds.contains(cat.id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6.0),
+                      child: CheckboxListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        tileColor: isSelected
+                            ? (isDarkMode
+                                ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                                : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
+                            : (isDarkMode
+                                ? const Color(0xFF1E2634)
+                                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
+                        title: Text(
+                          cat.displayName,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        secondary: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: cat.color.withValues(alpha: isDarkMode ? 0.25 : 0.15),
+                          child: Icon(cat.icon, size: 16, color: cat.color),
+                        ),
+                        value: isSelected,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _tempCategoryIds.add(cat.id);
+                            } else {
+                              _tempCategoryIds.remove(cat.id);
+                            }
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _apply,
+                icon: const Icon(Icons.check),
+                label: const Text('Apply Filters'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

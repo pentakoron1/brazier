@@ -274,19 +274,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _searchQuery = '';
-  Category? _selectedCategoryFilter;
+  Set<String> _selectedCategoryIds = {};
   bool _showOnlyGoalReached = false;
 
   List<Item> get _filteredItems {
     return _items.where((item) {
       final matchesQuery = _searchQuery.isEmpty ||
           item.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesCategory = _selectedCategoryFilter == null ||
-          item.category.id == _selectedCategoryFilter!.id;
+      final matchesCategory = _selectedCategoryIds.isEmpty ||
+          _selectedCategoryIds.contains(item.category.id);
       final matchesGoalFilter = !_showOnlyGoalReached || item.isGoalReached;
 
       return matchesQuery && matchesCategory && matchesGoalFilter;
     }).toList();
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedCategoryIds = {};
+      _showOnlyGoalReached = false;
+    });
   }
 
   int get _pendingReviewCount {
@@ -351,9 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
           item.category = fallbackCat;
         }
       }
-      if (_selectedCategoryFilter?.id == categoryId) {
-        _selectedCategoryFilter = null;
-      }
+      _selectedCategoryIds.remove(categoryId);
     });
     StorageService.saveCategories(_categories);
     StorageService.saveItems(_items);
@@ -636,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
               items: filtered,
               categories: _categories,
               searchQuery: _searchQuery,
-              selectedCategoryFilter: _selectedCategoryFilter,
+              selectedCategoryIds: _selectedCategoryIds,
               showOnlyGoalReached: _showOnlyGoalReached,
               showSegmentedProgressBar: _showSegmentedProgressBar,
               currency: _currency,
@@ -645,9 +651,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   _searchQuery = query;
                 });
               },
-              onCategoryFilterChanged: (category) {
+              onCategoryFilterChanged: (categoryIds) {
                 setState(() {
-                  _selectedCategoryFilter = category;
+                  _selectedCategoryIds = categoryIds;
                 });
               },
               onGoalFilterChanged: (goalOnly) {
@@ -655,6 +661,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showOnlyGoalReached = goalOnly;
                 });
               },
+              onResetFilters: _resetFilters,
               onEditItem: _openEditDialog,
               onDeleteItem: _deleteItem,
               onUpdateMonthlyStatus: _updateMonthlyStatus,
