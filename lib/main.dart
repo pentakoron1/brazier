@@ -275,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _searchQuery = '';
   Set<String> _selectedCategoryIds = {};
+  Set<ItemType> _selectedItemTypes = {};
   bool _showOnlyGoalReached = false;
   double? _minPriceFilter;
   double? _maxPriceFilter;
@@ -292,13 +293,15 @@ class _HomeScreenState extends State<HomeScreen> {
           item.name.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchesCategory = _selectedCategoryIds.isEmpty ||
           _selectedCategoryIds.contains(item.category.id);
+      final matchesItemType = _selectedItemTypes.isEmpty ||
+          _selectedItemTypes.contains(item.itemType);
       final matchesGoalFilter = !_showOnlyGoalReached || item.isGoalReached;
 
       final minP = _minPriceFilter ?? 0.0;
       final maxPFilter = _maxPriceFilter ?? maxP;
       final matchesPrice = item.price >= minP && item.price <= (maxPFilter + 0.01);
 
-      return matchesQuery && matchesCategory && matchesGoalFilter && matchesPrice;
+      return matchesQuery && matchesCategory && matchesItemType && matchesGoalFilter && matchesPrice;
     }).toList();
   }
 
@@ -306,6 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _searchQuery = '';
       _selectedCategoryIds = {};
+      _selectedItemTypes = {};
       _showOnlyGoalReached = false;
       _minPriceFilter = null;
       _maxPriceFilter = null;
@@ -604,6 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
               categories: _categories,
               searchQuery: _searchQuery,
               selectedCategoryIds: _selectedCategoryIds,
+              selectedItemTypes: _selectedItemTypes,
               showOnlyGoalReached: _showOnlyGoalReached,
               maxItemPrice: _maxItemPrice,
               minPriceFilter: _minPriceFilter,
@@ -618,6 +623,11 @@ class _HomeScreenState extends State<HomeScreen> {
               onCategoryFilterChanged: (categoryIds) {
                 setState(() {
                   _selectedCategoryIds = categoryIds;
+                });
+              },
+              onItemTypeFilterChanged: (types) {
+                setState(() {
+                  _selectedItemTypes = types;
                 });
               },
               onGoalFilterChanged: (goalOnly) {

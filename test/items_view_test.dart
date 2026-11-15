@@ -17,6 +17,7 @@ void main() {
             categories: categories,
             searchQuery: 'Nonexistent',
             selectedCategoryIds: const {'clothes'},
+            selectedItemTypes: const {},
             showOnlyGoalReached: false,
             maxItemPrice: 500.0,
             minPriceFilter: null,
@@ -24,6 +25,7 @@ void main() {
             currency: Currency.euro,
             onSearchQueryChanged: (_) {},
             onCategoryFilterChanged: (_) {},
+            onItemTypeFilterChanged: (_) {},
             onGoalFilterChanged: (_) {},
             onPriceFilterChanged: (minP, maxP) {},
             onResetFilters: () {

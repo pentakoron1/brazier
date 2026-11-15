@@ -12,6 +12,7 @@ class ItemsView extends StatefulWidget {
   final List<Category> categories;
   final String searchQuery;
   final Set<String> selectedCategoryIds;
+  final Set<ItemType> selectedItemTypes;
   final bool showOnlyGoalReached;
   final double maxItemPrice;
   final double? minPriceFilter;
@@ -20,6 +21,7 @@ class ItemsView extends StatefulWidget {
   final Currency currency;
   final ValueChanged<String> onSearchQueryChanged;
   final ValueChanged<Set<String>> onCategoryFilterChanged;
+  final ValueChanged<Set<ItemType>> onItemTypeFilterChanged;
   final ValueChanged<bool> onGoalFilterChanged;
   final Function(double? minP, double? maxP) onPriceFilterChanged;
   final VoidCallback onResetFilters;
@@ -35,6 +37,7 @@ class ItemsView extends StatefulWidget {
     required this.categories,
     required this.searchQuery,
     required this.selectedCategoryIds,
+    required this.selectedItemTypes,
     required this.showOnlyGoalReached,
     required this.maxItemPrice,
     required this.minPriceFilter,
@@ -43,6 +46,7 @@ class ItemsView extends StatefulWidget {
     this.currency = Currency.euro,
     required this.onSearchQueryChanged,
     required this.onCategoryFilterChanged,
+    required this.onItemTypeFilterChanged,
     required this.onGoalFilterChanged,
     required this.onPriceFilterChanged,
     required this.onResetFilters,
@@ -87,12 +91,14 @@ class _ItemsViewState extends State<ItemsView> {
       builder: (context) => _FilterBottomSheet(
         categories: widget.categories,
         selectedCategoryIds: widget.selectedCategoryIds,
+        selectedItemTypes: widget.selectedItemTypes,
         showOnlyGoalReached: widget.showOnlyGoalReached,
         maxItemPrice: widget.maxItemPrice,
         minPriceFilter: widget.minPriceFilter,
         maxPriceFilter: widget.maxPriceFilter,
         currency: widget.currency,
         onCategoryFilterChanged: widget.onCategoryFilterChanged,
+        onItemTypeFilterChanged: widget.onItemTypeFilterChanged,
         onGoalFilterChanged: widget.onGoalFilterChanged,
         onPriceFilterChanged: widget.onPriceFilterChanged,
         onResetFilters: widget.onResetFilters,
@@ -183,6 +189,7 @@ class _ItemsViewState extends State<ItemsView> {
 
     final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) +
         widget.selectedCategoryIds.length +
+        widget.selectedItemTypes.length +
         (isPriceFiltered ? 1 : 0);
 
     return Column(
@@ -233,7 +240,7 @@ class _ItemsViewState extends State<ItemsView> {
                     : null,
                 tooltip: activeFilterCount > 0
                     ? 'Filters ($activeFilterCount active)'
-                    : 'Filter Categories, Price & Status',
+                    : 'Filter Type, Categories, Price & Status',
                 icon: Badge(
                   isLabelVisible: activeFilterCount > 0,
                   label: Text('$activeFilterCount'),
@@ -296,7 +303,7 @@ class _ItemsViewState extends State<ItemsView> {
                         if (widget.searchQuery.isNotEmpty || activeFilterCount > 0) ...[
                           const SizedBox(height: 6),
                           Text(
-                            'Try adjusting your search query, price range, or category filters.',
+                            'Try adjusting your search query, price range, type, or category filters.',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.outline,
@@ -373,12 +380,14 @@ class _ItemsViewState extends State<ItemsView> {
 class _FilterBottomSheet extends StatefulWidget {
   final List<Category> categories;
   final Set<String> selectedCategoryIds;
+  final Set<ItemType> selectedItemTypes;
   final bool showOnlyGoalReached;
   final double maxItemPrice;
   final double? minPriceFilter;
   final double? maxPriceFilter;
   final Currency currency;
   final ValueChanged<Set<String>> onCategoryFilterChanged;
+  final ValueChanged<Set<ItemType>> onItemTypeFilterChanged;
   final ValueChanged<bool> onGoalFilterChanged;
   final Function(double? minP, double? maxP) onPriceFilterChanged;
   final VoidCallback onResetFilters;
@@ -386,12 +395,14 @@ class _FilterBottomSheet extends StatefulWidget {
   const _FilterBottomSheet({
     required this.categories,
     required this.selectedCategoryIds,
+    required this.selectedItemTypes,
     required this.showOnlyGoalReached,
     required this.maxItemPrice,
     required this.minPriceFilter,
     required this.maxPriceFilter,
     required this.currency,
     required this.onCategoryFilterChanged,
+    required this.onItemTypeFilterChanged,
     required this.onGoalFilterChanged,
     required this.onPriceFilterChanged,
     required this.onResetFilters,
@@ -402,45 +413,33 @@ class _FilterBottomSheet extends StatefulWidget {
 }
 
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
-  late Set<String> _tempCategoryIds;
-  late bool _tempGoalReached;
-  late double _tempMinPrice;
-  late double _tempMaxPrice;
+  late Set<String> _localCategoryIds;
+  late Set<ItemType> _localItemTypes;
+  late bool _localGoalReached;
+  late double _localMinPrice;
+  late double _localMaxPrice;
 
   @override
   void initState() {
     super.initState();
-    _tempCategoryIds = Set.from(widget.selectedCategoryIds);
-    _tempGoalReached = widget.showOnlyGoalReached;
+    _localCategoryIds = Set<String>.from(widget.selectedCategoryIds);
+    _localItemTypes = Set<ItemType>.from(widget.selectedItemTypes);
+    _localGoalReached = widget.showOnlyGoalReached;
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    _tempMinPrice = widget.minPriceFilter ?? 0.0;
-    _tempMaxPrice = widget.maxPriceFilter ?? maxLimit;
+    _localMinPrice = widget.minPriceFilter ?? 0.0;
+    _localMaxPrice = widget.maxPriceFilter ?? maxLimit;
   }
 
   void _clearAll() {
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     setState(() {
-      _tempCategoryIds.clear();
-      _tempGoalReached = false;
-      _tempMinPrice = 0.0;
-      _tempMaxPrice = maxLimit;
+      _localCategoryIds.clear();
+      _localItemTypes.clear();
+      _localGoalReached = false;
+      _localMinPrice = 0.0;
+      _localMaxPrice = maxLimit;
     });
-  }
-
-  void _apply() {
-    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    widget.onCategoryFilterChanged(_tempCategoryIds);
-    widget.onGoalFilterChanged(_tempGoalReached);
-
-    final isDefaultMin = _tempMinPrice <= 0.01;
-    final isDefaultMax = _tempMaxPrice >= (maxLimit - 0.01);
-
-    widget.onPriceFilterChanged(
-      isDefaultMin ? null : _tempMinPrice,
-      isDefaultMax ? null : _tempMaxPrice,
-    );
-
-    Navigator.of(context).pop();
+    widget.onResetFilters();
   }
 
   @override
@@ -449,11 +448,20 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    final currentMin = _tempMinPrice.clamp(0.0, maxLimit);
-    final currentMax = _tempMaxPrice.clamp(currentMin, maxLimit);
+    final currentMin = _localMinPrice.clamp(0.0, maxLimit);
+    final currentMax = _localMaxPrice.clamp(currentMin, maxLimit);
 
-    final isPriceFiltered = _tempMinPrice > 0.01 || _tempMaxPrice < (maxLimit - 0.01);
-    final noCategorySelected = _tempCategoryIds.isEmpty;
+    final isPriceFiltered = _localMinPrice > 0.01 || _localMaxPrice < (maxLimit - 0.01);
+    final noCategorySelected = _localCategoryIds.isEmpty;
+    final noItemTypeSelected = _localItemTypes.isEmpty;
+
+    final hasActiveFilters = _localCategoryIds.isNotEmpty ||
+        _localItemTypes.isNotEmpty ||
+        _localGoalReached ||
+        isPriceFiltered;
+
+    final isSinglePurchaseExplicit = _localItemTypes.contains(ItemType.singlePurchase);
+    final isSubscriptionExplicit = _localItemTypes.contains(ItemType.subscription);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -484,7 +492,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   ),
                 ),
               ),
-              if (_tempCategoryIds.isNotEmpty || _tempGoalReached || isPriceFiltered)
+              if (hasActiveFilters)
                 TextButton(
                   onPressed: _clearAll,
                   child: const Text('Clear All'),
@@ -538,10 +546,151 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     ),
                     onChanged: (RangeValues values) {
                       setState(() {
-                        _tempMinPrice = values.start;
-                        _tempMaxPrice = values.end;
+                        _localMinPrice = values.start;
+                        _localMaxPrice = values.end;
                       });
+                      final isDefaultMin = values.start <= 0.01;
+                      final isDefaultMax = values.end >= (maxLimit - 0.01);
+                      widget.onPriceFilterChanged(
+                        isDefaultMin ? null : values.start,
+                        isDefaultMax ? null : values.end,
+                      );
                     },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Item Type Filter Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'ITEM TYPE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        noItemTypeSelected
+                            ? 'All Types (Default)'
+                            : '${_localItemTypes.length} selected',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: noItemTypeSelected
+                              ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
+                              : theme.colorScheme.primary,
+                          fontWeight: noItemTypeSelected ? FontWeight.normal : FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Single Purchase Choice
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6.0),
+                    child: CheckboxListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      tileColor: isSinglePurchaseExplicit
+                          ? (isDarkMode
+                              ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                              : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
+                          : (isDarkMode
+                              ? const Color(0xFF1E2634)
+                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
+                      title: Text(
+                        'Single Purchase',
+                        style: TextStyle(
+                          fontWeight: isSinglePurchaseExplicit ? FontWeight.bold : FontWeight.normal,
+                          color: noItemTypeSelected ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
+                        ),
+                      ),
+                      //subtitle: const Text('One-time bought items'),
+                      secondary: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 16,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      activeColor: noItemTypeSelected
+                          ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
+                          : theme.colorScheme.primary,
+                      checkColor: noItemTypeSelected
+                          ? (isDarkMode ? Colors.grey.shade900 : Colors.white)
+                          : theme.colorScheme.onPrimary,
+                      value: noItemTypeSelected || isSinglePurchaseExplicit,
+                      onChanged: (val) {
+                        setState(() {
+                          if (noItemTypeSelected) {
+                            _localItemTypes = {ItemType.singlePurchase};
+                          } else {
+                            if (val == true) {
+                              _localItemTypes.add(ItemType.singlePurchase);
+                            } else {
+                              _localItemTypes.remove(ItemType.singlePurchase);
+                            }
+                          }
+                        });
+                        widget.onItemTypeFilterChanged(_localItemTypes);
+                      },
+                    ),
+                  ),
+                  // Subscription Choice
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6.0),
+                    child: CheckboxListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      tileColor: isSubscriptionExplicit
+                          ? (isDarkMode
+                              ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                              : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
+                          : (isDarkMode
+                              ? const Color(0xFF1E2634)
+                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
+                      title: Text(
+                        'Subscription',
+                        style: TextStyle(
+                          fontWeight: isSubscriptionExplicit ? FontWeight.bold : FontWeight.normal,
+                          color: noItemTypeSelected ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
+                        ),
+                      ),
+                      //subtitle: const Text('Recurring monthly items'),
+                      secondary: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.autorenew_outlined,
+                          size: 16,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      activeColor: noItemTypeSelected
+                          ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
+                          : theme.colorScheme.primary,
+                      checkColor: noItemTypeSelected
+                          ? (isDarkMode ? Colors.grey.shade900 : Colors.white)
+                          : theme.colorScheme.onPrimary,
+                      value: noItemTypeSelected || isSubscriptionExplicit,
+                      onChanged: (val) {
+                        setState(() {
+                          if (noItemTypeSelected) {
+                            _localItemTypes = {ItemType.subscription};
+                          } else {
+                            if (val == true) {
+                              _localItemTypes.add(ItemType.subscription);
+                            } else {
+                              _localItemTypes.remove(ItemType.subscription);
+                            }
+                          }
+                        });
+                        widget.onItemTypeFilterChanged(_localItemTypes);
+                      },
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -562,16 +711,18 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         ? const Color(0xFF222B38)
                         : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     title: const Text('Goal Reached Only'),
-                    subtitle: const Text('Show only items that met or exceeded goal duration'),
+                    //subtitle: const Text('Show only items that met or exceeded goal duration'),
                     secondary: Icon(
                       Icons.check_circle_outline,
-                      color: _tempGoalReached ? theme.colorScheme.primary : null,
+                      color: _localGoalReached ? theme.colorScheme.primary : null,
                     ),
-                    value: _tempGoalReached,
+                    value: _localGoalReached,
                     onChanged: (val) {
+                      final newGoal = val ?? false;
                       setState(() {
-                        _tempGoalReached = val ?? false;
+                        _localGoalReached = newGoal;
                       });
+                      widget.onGoalFilterChanged(newGoal);
                     },
                   ),
                   const SizedBox(height: 20),
@@ -590,7 +741,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       Text(
                         noCategorySelected
                             ? 'All Categories (Default)'
-                            : '${_tempCategoryIds.length} selected',
+                            : '${_localCategoryIds.length} selected',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: noCategorySelected
                               ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
@@ -602,7 +753,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   ),
                   const SizedBox(height: 8),
                   ...widget.categories.map((cat) {
-                    final isExplicitlySelected = _tempCategoryIds.contains(cat.id);
+                    final isExplicitlySelected = _localCategoryIds.contains(cat.id);
                     final isChecked = noCategorySelected || isExplicitlySelected;
                     final isGrayCheck = noCategorySelected;
 
@@ -641,15 +792,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         onChanged: (val) {
                           setState(() {
                             if (noCategorySelected) {
-                              _tempCategoryIds = {cat.id};
+                              _localCategoryIds = {cat.id};
                             } else {
                               if (val == true) {
-                                _tempCategoryIds.add(cat.id);
+                                _localCategoryIds.add(cat.id);
                               } else {
-                                _tempCategoryIds.remove(cat.id);
+                                _localCategoryIds.remove(cat.id);
                               }
                             }
                           });
+                          widget.onCategoryFilterChanged(_localCategoryIds);
                         },
                       ),
                     );
@@ -657,22 +809,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _apply,
-                icon: const Icon(Icons.check),
-                label: const Text('Apply Filters'),
-              ),
-            ],
           ),
         ],
       ),
