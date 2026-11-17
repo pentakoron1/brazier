@@ -7,6 +7,18 @@ import 'item_card.dart';
 
 typedef ReorderCallback = void Function(int oldIndex, int newIndex);
 
+enum SortOption {
+  defaultOrder,
+  alphabetical,
+  cost,
+  usageStreak,
+}
+
+enum SortDirection {
+  ascending,
+  descending,
+}
+
 class ItemsView extends StatefulWidget {
   final List<Item> items;
   final List<Category> categories;
@@ -14,16 +26,23 @@ class ItemsView extends StatefulWidget {
   final Set<String> selectedCategoryIds;
   final Set<ItemType> selectedItemTypes;
   final bool showOnlyGoalReached;
+  final bool showOnlyCurrentlyUsed;
   final double maxItemPrice;
   final double? minPriceFilter;
   final double? maxPriceFilter;
+  final SortOption sortOption;
+  final SortDirection sortDirection;
+  final bool isSidePanelOpen;
   final bool showSegmentedProgressBar;
   final Currency currency;
   final ValueChanged<String> onSearchQueryChanged;
   final ValueChanged<Set<String>> onCategoryFilterChanged;
   final ValueChanged<Set<ItemType>> onItemTypeFilterChanged;
   final ValueChanged<bool> onGoalFilterChanged;
+  final ValueChanged<bool> onCurrentlyUsedFilterChanged;
   final Function(double? minP, double? maxP) onPriceFilterChanged;
+  final Function(SortOption option, SortDirection direction) onApplySorting;
+  final VoidCallback onToggleSidePanel;
   final VoidCallback onResetFilters;
   final VoidCallback onOpenSettings;
   final ValueChanged<Item> onEditItem;
@@ -39,16 +58,23 @@ class ItemsView extends StatefulWidget {
     required this.selectedCategoryIds,
     required this.selectedItemTypes,
     required this.showOnlyGoalReached,
+    required this.showOnlyCurrentlyUsed,
     required this.maxItemPrice,
     required this.minPriceFilter,
     required this.maxPriceFilter,
+    required this.sortOption,
+    required this.sortDirection,
+    this.isSidePanelOpen = false,
     this.showSegmentedProgressBar = true,
     this.currency = Currency.euro,
     required this.onSearchQueryChanged,
     required this.onCategoryFilterChanged,
     required this.onItemTypeFilterChanged,
     required this.onGoalFilterChanged,
+    required this.onCurrentlyUsedFilterChanged,
     required this.onPriceFilterChanged,
+    required this.onApplySorting,
+    required this.onToggleSidePanel,
     required this.onResetFilters,
     required this.onOpenSettings,
     required this.onEditItem,
@@ -63,47 +89,59 @@ class ItemsView extends StatefulWidget {
 
 class _ItemsViewState extends State<ItemsView> {
   bool _isCompactView = false;
+  bool _isFilterExpanded = false;
+  int _activeSubmenuIndex = 0; // 0: Categories, 1: Price, 2: Status, 3: Search, 4: Display/Reorder
+
   late FocusNode _searchFocusNode;
+
+  // Sorting local state (applied when 'Apply' is tapped)
+  late SortOption _tempSortOption;
+  late SortDirection _tempSortDirection;
+
+  // Price text controllers for direct editing
+  late TextEditingController _minPriceController;
+  late TextEditingController _maxPriceController;
 
   @override
   void initState() {
     super.initState();
     _searchFocusNode = FocusNode();
-    _searchFocusNode.addListener(() {
-      setState(() {});
-    });
+
+    _tempSortOption = widget.sortOption;
+    _tempSortDirection = widget.sortDirection;
+
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
+    _minPriceController = TextEditingController(
+      text: (widget.minPriceFilter ?? 0.0).toStringAsFixed(2),
+    );
+    _maxPriceController = TextEditingController(
+      text: (widget.maxPriceFilter ?? maxLimit).toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void didUpdateWidget(ItemsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sortOption != widget.sortOption ||
+        oldWidget.sortDirection != widget.sortDirection) {
+      _tempSortOption = widget.sortOption;
+      _tempSortDirection = widget.sortDirection;
+    }
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
+    if (oldWidget.minPriceFilter != widget.minPriceFilter) {
+      _minPriceController.text = (widget.minPriceFilter ?? 0.0).toStringAsFixed(2);
+    }
+    if (oldWidget.maxPriceFilter != widget.maxPriceFilter) {
+      _maxPriceController.text = (widget.maxPriceFilter ?? maxLimit).toStringAsFixed(2);
+    }
   }
 
   @override
   void dispose() {
     _searchFocusNode.dispose();
+    _minPriceController.dispose();
+    _maxPriceController.dispose();
     super.dispose();
-  }
-
-  void _openFilterBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _FilterBottomSheet(
-        categories: widget.categories,
-        selectedCategoryIds: widget.selectedCategoryIds,
-        selectedItemTypes: widget.selectedItemTypes,
-        showOnlyGoalReached: widget.showOnlyGoalReached,
-        maxItemPrice: widget.maxItemPrice,
-        minPriceFilter: widget.minPriceFilter,
-        maxPriceFilter: widget.maxPriceFilter,
-        currency: widget.currency,
-        onCategoryFilterChanged: widget.onCategoryFilterChanged,
-        onItemTypeFilterChanged: widget.onItemTypeFilterChanged,
-        onGoalFilterChanged: widget.onGoalFilterChanged,
-        onPriceFilterChanged: widget.onPriceFilterChanged,
-        onResetFilters: widget.onResetFilters,
-      ),
-    );
   }
 
   Widget _buildItemCard(Item item) {
@@ -178,590 +216,60 @@ class _ItemsViewState extends State<ItemsView> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isSearching = _searchFocusNode.hasFocus || widget.searchQuery.isNotEmpty;
-
+  Widget _buildSubmenuPanel(BuildContext context, ThemeData theme, bool isDarkMode) {
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    final isPriceFiltered = (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
-        (widget.maxPriceFilter != null && widget.maxPriceFilter! < (maxLimit - 0.01));
+    final currentMin = (widget.minPriceFilter ?? 0.0).clamp(0.0, maxLimit);
+    final currentMax = (widget.maxPriceFilter ?? maxLimit).clamp(currentMin, maxLimit);
 
-    final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) +
-        widget.selectedCategoryIds.length +
-        widget.selectedItemTypes.length +
-        (isPriceFiltered ? 1 : 0);
+    final noCategorySelected = widget.selectedCategoryIds.isEmpty;
 
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        // Search & View Mode Toggle Section
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              // Search Bar with Expansion when focused/typing
-              Expanded(
-                flex: isSearching ? 3 : 2,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  child: TextField(
-                    focusNode: _searchFocusNode,
-                    decoration: InputDecoration(
-                      hintText: 'Search items...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: widget.searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () => widget.onSearchQueryChanged(''),
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onChanged: widget.onSearchQueryChanged,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Multi-Select Filter Dropdown Button
-              IconButton.filledTonal(
-                style: activeFilterCount > 0
-                    ? IconButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        foregroundColor: theme.colorScheme.onPrimaryContainer,
-                      )
-                    : null,
-                tooltip: activeFilterCount > 0
-                    ? 'Filters ($activeFilterCount active)'
-                    : 'Filter Type, Categories, Price & Status',
-                icon: Badge(
-                  isLabelVisible: activeFilterCount > 0,
-                  label: Text('$activeFilterCount'),
-                  child: const Icon(Icons.filter_list),
-                ),
-                onPressed: () => _openFilterBottomSheet(context),
-              ),
-              const SizedBox(width: 6),
-
-              // Compact / Detailed View Toggle Button
-              IconButton.filledTonal(
-                tooltip: _isCompactView ? 'Switch to Detailed View' : 'Switch to Compact View',
-                icon: Icon(_isCompactView ? Icons.view_agenda_outlined : Icons.view_headline),
-                onPressed: () {
-                  setState(() {
-                    _isCompactView = !_isCompactView;
-                  });
-                },
-              ),
-              const SizedBox(width: 6),
-
-              // Settings Button
-              IconButton.filledTonal(
-                tooltip: 'Settings',
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: widget.onOpenSettings,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Items List or Responsive Multi-Column Grid with Drag-and-Drop Reordering
-        Expanded(
-          child: widget.items.isEmpty
-              ? Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          (widget.searchQuery.isNotEmpty || activeFilterCount > 0)
-                              ? Icons.filter_alt_off_outlined
-                              : Icons.inventory_2_outlined,
-                          size: 64,
-                          color: theme.colorScheme.outline,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          (widget.searchQuery.isNotEmpty || activeFilterCount > 0)
-                              ? 'No items match your active filters.'
-                              : 'No items added yet.\nTap "+" to add a new item!',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        if (widget.searchQuery.isNotEmpty || activeFilterCount > 0) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            'Try adjusting your search query, price range, type, or category filters.',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.outline,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          FilledButton.icon(
-                            onPressed: widget.onResetFilters,
-                            icon: const Icon(Icons.restart_alt),
-                            label: const Text('Reset Filters'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-
-                    // Calculate grid columns dynamically for wide screens (tablets, foldables, web, desktop)
-                    int crossAxisCount = 1;
-                    if (width >= 1350) {
-                      crossAxisCount = 3;
-                    } else if (width >= 900) {
-                      crossAxisCount = 2;
-                    }
-
-                    if (crossAxisCount == 1) {
-                      return ReorderableListView.builder(
-                        itemCount: widget.items.length,
-                        padding: const EdgeInsets.only(bottom: 180),
-                        onReorderStart: (_) {
-                          HapticFeedback.mediumImpact();
-                        },
-                        // ignore: deprecated_member_use
-                        onReorder: (oldIndex, newIndex) {
-                          HapticFeedback.selectionClick();
-                          widget.onReorderItems(oldIndex, newIndex);
-                        },
-                        itemBuilder: (context, index) {
-                          final item = widget.items[index];
-                          return KeyedSubtree(
-                            key: ValueKey('reorder_${item.id}'),
-                            child: _buildItemCard(item),
-                          );
-                        },
-                      );
-                    } else {
-                      final tileWidth = (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
-
-                      return GridView.builder(
-                        itemCount: widget.items.length,
-                        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 150, top: 4),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          mainAxisExtent: _isCompactView ? 95 : 240,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemBuilder: (context, index) {
-                          return _buildReorderableGridItem(index, crossAxisCount, tileWidth);
-                        },
-                      );
-                    }
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FilterBottomSheet extends StatefulWidget {
-  final List<Category> categories;
-  final Set<String> selectedCategoryIds;
-  final Set<ItemType> selectedItemTypes;
-  final bool showOnlyGoalReached;
-  final double maxItemPrice;
-  final double? minPriceFilter;
-  final double? maxPriceFilter;
-  final Currency currency;
-  final ValueChanged<Set<String>> onCategoryFilterChanged;
-  final ValueChanged<Set<ItemType>> onItemTypeFilterChanged;
-  final ValueChanged<bool> onGoalFilterChanged;
-  final Function(double? minP, double? maxP) onPriceFilterChanged;
-  final VoidCallback onResetFilters;
-
-  const _FilterBottomSheet({
-    required this.categories,
-    required this.selectedCategoryIds,
-    required this.selectedItemTypes,
-    required this.showOnlyGoalReached,
-    required this.maxItemPrice,
-    required this.minPriceFilter,
-    required this.maxPriceFilter,
-    required this.currency,
-    required this.onCategoryFilterChanged,
-    required this.onItemTypeFilterChanged,
-    required this.onGoalFilterChanged,
-    required this.onPriceFilterChanged,
-    required this.onResetFilters,
-  });
-
-  @override
-  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
-}
-
-class _FilterBottomSheetState extends State<_FilterBottomSheet> {
-  late Set<String> _localCategoryIds;
-  late Set<ItemType> _localItemTypes;
-  late bool _localGoalReached;
-  late double _localMinPrice;
-  late double _localMaxPrice;
-
-  @override
-  void initState() {
-    super.initState();
-    _localCategoryIds = Set<String>.from(widget.selectedCategoryIds);
-    _localItemTypes = Set<ItemType>.from(widget.selectedItemTypes);
-    _localGoalReached = widget.showOnlyGoalReached;
-    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    _localMinPrice = widget.minPriceFilter ?? 0.0;
-    _localMaxPrice = widget.maxPriceFilter ?? maxLimit;
-  }
-
-  void _clearAll() {
-    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    setState(() {
-      _localCategoryIds.clear();
-      _localItemTypes.clear();
-      _localGoalReached = false;
-      _localMinPrice = 0.0;
-      _localMaxPrice = maxLimit;
-    });
-    widget.onResetFilters();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    final currentMin = _localMinPrice.clamp(0.0, maxLimit);
-    final currentMax = _localMaxPrice.clamp(currentMin, maxLimit);
-
-    final isPriceFiltered = _localMinPrice > 0.01 || _localMaxPrice < (maxLimit - 0.01);
-    final noCategorySelected = _localCategoryIds.isEmpty;
-    final noItemTypeSelected = _localItemTypes.isEmpty;
-
-    final hasActiveFilters = _localCategoryIds.isNotEmpty ||
-        _localItemTypes.isNotEmpty ||
-        _localGoalReached ||
-        isPriceFiltered;
-
-    final isSinglePurchaseExplicit = _localItemTypes.contains(ItemType.singlePurchase);
-    final isSubscriptionExplicit = _localItemTypes.contains(ItemType.subscription);
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
-                child: Icon(
-                  Icons.filter_list,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Filter Items',
-                  style: theme.textTheme.headlineSmall?.copyWith(
+    switch (_activeSubmenuIndex) {
+      // SUBMENU 0: CATEGORIES
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'CATEGORIES',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              if (hasActiveFilters)
-                TextButton(
-                  onPressed: _clearAll,
-                  child: const Text('Clear All'),
+                Text(
+                  noCategorySelected
+                      ? 'All Categories (Default)'
+                      : '${widget.selectedCategoryIds.length} selected',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: noCategorySelected
+                        ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
+                        : theme.colorScheme.primary,
+                    fontWeight: noCategorySelected ? FontWeight.normal : FontWeight.bold,
+                  ),
                 ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Price Range Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'PRICE RANGE',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${widget.currency.format(currentMin)} – ${widget.currency.format(currentMax)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isPriceFiltered
-                              ? theme.colorScheme.primary
-                              : (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  RangeSlider(
-                    values: RangeValues(currentMin, currentMax),
-                    min: 0.0,
-                    max: maxLimit,
-                    activeColor: theme.colorScheme.primary,
-                    inactiveColor: isDarkMode
-                        ? const Color(0xFF28303F)
-                        : theme.colorScheme.surfaceContainerHighest,
-                    labels: RangeLabels(
-                      widget.currency.format(currentMin),
-                      widget.currency.format(currentMax),
-                    ),
-                    onChanged: (RangeValues values) {
-                      setState(() {
-                        _localMinPrice = values.start;
-                        _localMaxPrice = values.end;
-                      });
-                      final isDefaultMin = values.start <= 0.01;
-                      final isDefaultMax = values.end >= (maxLimit - 0.01);
-                      widget.onPriceFilterChanged(
-                        isDefaultMin ? null : values.start,
-                        isDefaultMax ? null : values.end,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Item Type Filter Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'ITEM TYPE',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        noItemTypeSelected
-                            ? 'All Types (Default)'
-                            : '${_localItemTypes.length} selected',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: noItemTypeSelected
-                              ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
-                              : theme.colorScheme.primary,
-                          fontWeight: noItemTypeSelected ? FontWeight.normal : FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Single Purchase Choice
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6.0),
-                    child: CheckboxListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      tileColor: isSinglePurchaseExplicit
-                          ? (isDarkMode
-                              ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                              : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
-                          : (isDarkMode
-                              ? const Color(0xFF1E2634)
-                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
-                      title: Text(
-                        'Single Purchase',
-                        style: TextStyle(
-                          fontWeight: isSinglePurchaseExplicit ? FontWeight.bold : FontWeight.normal,
-                          color: noItemTypeSelected ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
-                        ),
-                      ),
-                      //subtitle: const Text('One-time bought items'),
-                      secondary: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        child: Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 16,
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      activeColor: noItemTypeSelected
-                          ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
-                          : theme.colorScheme.primary,
-                      checkColor: noItemTypeSelected
-                          ? (isDarkMode ? Colors.grey.shade900 : Colors.white)
-                          : theme.colorScheme.onPrimary,
-                      value: noItemTypeSelected || isSinglePurchaseExplicit,
-                      onChanged: (val) {
-                        setState(() {
-                          if (noItemTypeSelected) {
-                            _localItemTypes = {ItemType.singlePurchase};
-                          } else {
-                            if (val == true) {
-                              _localItemTypes.add(ItemType.singlePurchase);
-                            } else {
-                              _localItemTypes.remove(ItemType.singlePurchase);
-                            }
-                          }
-                        });
-                        widget.onItemTypeFilterChanged(_localItemTypes);
-                      },
-                    ),
-                  ),
-                  // Subscription Choice
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6.0),
-                    child: CheckboxListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      tileColor: isSubscriptionExplicit
-                          ? (isDarkMode
-                              ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                              : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
-                          : (isDarkMode
-                              ? const Color(0xFF1E2634)
-                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
-                      title: Text(
-                        'Subscription',
-                        style: TextStyle(
-                          fontWeight: isSubscriptionExplicit ? FontWeight.bold : FontWeight.normal,
-                          color: noItemTypeSelected ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
-                        ),
-                      ),
-                      //subtitle: const Text('Recurring monthly items'),
-                      secondary: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        child: Icon(
-                          Icons.autorenew_outlined,
-                          size: 16,
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      activeColor: noItemTypeSelected
-                          ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
-                          : theme.colorScheme.primary,
-                      checkColor: noItemTypeSelected
-                          ? (isDarkMode ? Colors.grey.shade900 : Colors.white)
-                          : theme.colorScheme.onPrimary,
-                      value: noItemTypeSelected || isSubscriptionExplicit,
-                      onChanged: (val) {
-                        setState(() {
-                          if (noItemTypeSelected) {
-                            _localItemTypes = {ItemType.subscription};
-                          } else {
-                            if (val == true) {
-                              _localItemTypes.add(ItemType.subscription);
-                            } else {
-                              _localItemTypes.remove(ItemType.subscription);
-                            }
-                          }
-                        });
-                        widget.onItemTypeFilterChanged(_localItemTypes);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Status Filter Section
-                  Text(
-                    'STATUS',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    tileColor: isDarkMode
-                        ? const Color(0xFF222B38)
-                        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    title: const Text('Goal Reached Only'),
-                    //subtitle: const Text('Show only items that met or exceeded goal duration'),
-                    secondary: Icon(
-                      Icons.check_circle_outline,
-                      color: _localGoalReached ? theme.colorScheme.primary : null,
-                    ),
-                    value: _localGoalReached,
-                    onChanged: (val) {
-                      final newGoal = val ?? false;
-                      setState(() {
-                        _localGoalReached = newGoal;
-                      });
-                      widget.onGoalFilterChanged(newGoal);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Categories Filter Section (Multiple Choice)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'CATEGORIES',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        noCategorySelected
-                            ? 'All Categories (Default)'
-                            : '${_localCategoryIds.length} selected',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: noCategorySelected
-                              ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
-                              : theme.colorScheme.primary,
-                          fontWeight: noCategorySelected ? FontWeight.normal : FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ...widget.categories.map((cat) {
-                    final isExplicitlySelected = _localCategoryIds.contains(cat.id);
+              ],
+            ),
+            const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 180),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: widget.categories.map((cat) {
+                    final isExplicitlySelected = widget.selectedCategoryIds.contains(cat.id);
                     final isChecked = noCategorySelected || isExplicitlySelected;
                     final isGrayCheck = noCategorySelected;
 
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 6.0),
+                      padding: const EdgeInsets.only(bottom: 4.0),
                       child: CheckboxListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         tileColor: isExplicitlySelected
                             ? (isDarkMode
@@ -773,14 +281,15 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         title: Text(
                           cat.displayName,
                           style: TextStyle(
+                            fontSize: 13,
                             fontWeight: isExplicitlySelected ? FontWeight.bold : FontWeight.normal,
                             color: isGrayCheck ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
                           ),
                         ),
                         secondary: CircleAvatar(
-                          radius: 16,
+                          radius: 14,
                           backgroundColor: cat.color.withValues(alpha: isDarkMode ? 0.25 : 0.15),
-                          child: Icon(cat.icon, size: 16, color: cat.color),
+                          child: Icon(cat.icon, size: 14, color: cat.color),
                         ),
                         activeColor: isGrayCheck
                             ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
@@ -790,28 +299,608 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             : theme.colorScheme.onPrimary,
                         value: isChecked,
                         onChanged: (val) {
-                          setState(() {
-                            if (noCategorySelected) {
-                              _localCategoryIds = {cat.id};
+                          final newSet = Set<String>.from(widget.selectedCategoryIds);
+                          if (noCategorySelected) {
+                            newSet.add(cat.id);
+                          } else {
+                            if (val == true) {
+                              newSet.add(cat.id);
                             } else {
-                              if (val == true) {
-                                _localCategoryIds.add(cat.id);
-                              } else {
-                                _localCategoryIds.remove(cat.id);
-                              }
+                              newSet.remove(cat.id);
                             }
-                          });
-                          widget.onCategoryFilterChanged(_localCategoryIds);
+                          }
+                          widget.onCategoryFilterChanged(newSet);
                         },
                       ),
                     );
-                  }),
-                ],
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      // SUBMENU 1: PRICE
+      case 1:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'PRICE RANGE',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            RangeSlider(
+              values: RangeValues(currentMin, currentMax),
+              min: 0.0,
+              max: maxLimit,
+              activeColor: theme.colorScheme.primary,
+              inactiveColor: isDarkMode
+                  ? const Color(0xFF28303F)
+                  : theme.colorScheme.surfaceContainerHighest,
+              labels: RangeLabels(
+                widget.currency.format(currentMin),
+                widget.currency.format(currentMax),
+              ),
+              onChanged: (RangeValues values) {
+                _minPriceController.text = values.start.toStringAsFixed(2);
+                _maxPriceController.text = values.end.toStringAsFixed(2);
+                final isDefaultMin = values.start <= 0.01;
+                final isDefaultMax = values.end >= (maxLimit - 0.01);
+                widget.onPriceFilterChanged(
+                  isDefaultMin ? null : values.start,
+                  isDefaultMax ? null : values.end,
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _minPriceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Min (${widget.currency.symbol})',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (val) {
+                      final parsedMin = double.tryParse(val.trim());
+                      if (parsedMin != null) {
+                        widget.onPriceFilterChanged(
+                          parsedMin <= 0.01 ? null : parsedMin,
+                          widget.maxPriceFilter,
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _maxPriceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Max (${widget.currency.symbol})',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (val) {
+                      final parsedMax = double.tryParse(val.trim());
+                      if (parsedMax != null) {
+                        widget.onPriceFilterChanged(
+                          widget.minPriceFilter,
+                          parsedMax >= (maxLimit - 0.01) ? null : parsedMax,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+      // SUBMENU 2: STATUS
+      case 2:
+        final isSingleExplicit = widget.selectedItemTypes.contains(ItemType.singlePurchase);
+        final isSubscriptionExplicit = widget.selectedItemTypes.contains(ItemType.subscription);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'ITEM STATUS & TYPE',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            CheckboxListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              title: const Text('Subscription Only', style: TextStyle(fontSize: 13)),
+              secondary: const Icon(Icons.autorenew, size: 18),
+              value: isSubscriptionExplicit,
+              onChanged: (val) {
+                final newSet = Set<ItemType>.from(widget.selectedItemTypes);
+                if (val == true) {
+                  newSet.add(ItemType.subscription);
+                } else {
+                  newSet.remove(ItemType.subscription);
+                }
+                widget.onItemTypeFilterChanged(newSet);
+              },
+            ),
+            CheckboxListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              title: const Text('Single Purchase Only', style: TextStyle(fontSize: 13)),
+              secondary: const Icon(Icons.shopping_bag_outlined, size: 18),
+              value: isSingleExplicit,
+              onChanged: (val) {
+                final newSet = Set<ItemType>.from(widget.selectedItemTypes);
+                if (val == true) {
+                  newSet.add(ItemType.singlePurchase);
+                } else {
+                  newSet.remove(ItemType.singlePurchase);
+                }
+                widget.onItemTypeFilterChanged(newSet);
+              },
+            ),
+            CheckboxListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              title: const Text('Currently Used Only', style: TextStyle(fontSize: 13)),
+              secondary: const Icon(Icons.local_fire_department, size: 18),
+              value: widget.showOnlyCurrentlyUsed,
+              onChanged: (val) {
+                widget.onCurrentlyUsedFilterChanged(val ?? false);
+              },
+            ),
+            CheckboxListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              title: const Text('Goal Reached Only', style: TextStyle(fontSize: 13)),
+              secondary: const Icon(Icons.check_circle_outline, size: 18),
+              value: widget.showOnlyGoalReached,
+              onChanged: (val) {
+                widget.onGoalFilterChanged(val ?? false);
+              },
+            ),
+          ],
+        );
+
+      // SUBMENU 3: SEARCH
+      case 3:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'SEARCH ITEM NAME',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              focusNode: _searchFocusNode,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Type item name...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: widget.searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => widget.onSearchQueryChanged(''),
+                      )
+                    : null,
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: widget.onSearchQueryChanged,
+            ),
+          ],
+        );
+
+      // SUBMENU 4: DISPLAY & REORDER
+      case 4:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'DISPLAY & SORTING',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // View mode toggle
+            Row(
+              children: [
+                const Text('Card Layout:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Detailed')),
+                    ButtonSegment(value: true, label: Text('Compact')),
+                  ],
+                  selected: {_isCompactView},
+                  onSelectionChanged: (selection) {
+                    setState(() {
+                      _isCompactView = selection.first;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Sort by
+            Row(
+              children: [
+                const Text('Sort By:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButton<SortOption>(
+                    value: _tempSortOption,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(value: SortOption.defaultOrder, child: Text('Default Order')),
+                      DropdownMenuItem(value: SortOption.alphabetical, child: Text('Alphabetically')),
+                      DropdownMenuItem(value: SortOption.cost, child: Text('Cost / Price')),
+                      DropdownMenuItem(value: SortOption.usageStreak, child: Text('Usage Streak')),
+                    ],
+                    onChanged: (opt) {
+                      if (opt != null) {
+                        setState(() {
+                          _tempSortOption = opt;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // Sort direction
+            Row(
+              children: [
+                const Text('Direction:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                SegmentedButton<SortDirection>(
+                  segments: const [
+                    ButtonSegment(value: SortDirection.ascending, icon: Icon(Icons.arrow_upward, size: 16), label: Text('Asc')),
+                    ButtonSegment(value: SortDirection.descending, icon: Icon(Icons.arrow_downward, size: 16), label: Text('Desc')),
+                  ],
+                  selected: {_tempSortDirection},
+                  onSelectionChanged: (selection) {
+                    setState(() {
+                      _tempSortDirection = selection.first;
+                    });
+                  },
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: () {
+                    widget.onApplySorting(_tempSortOption, _tempSortDirection);
+                  },
+                  icon: const Icon(Icons.check, size: 16),
+                  label: const Text('Apply'),
+                ),
+              ],
+            ),
+          ],
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildEmptyState(ThemeData theme, int activeFilterCount) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              (widget.searchQuery.isNotEmpty || activeFilterCount > 0)
+                  ? Icons.filter_alt_off_outlined
+                  : Icons.inventory_2_outlined,
+              size: 64,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              (widget.searchQuery.isNotEmpty || activeFilterCount > 0)
+                  ? 'No items match your active filters.'
+                  : 'No items added yet.\nTap "+" to add a new item!',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            if (widget.searchQuery.isNotEmpty || activeFilterCount > 0) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Try adjusting your search query, price range, or category filters.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: widget.onResetFilters,
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Reset Filters'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemsListOrGrid(double topPadding) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+
+        int crossAxisCount = 1;
+        if (width >= 1350) {
+          crossAxisCount = 3;
+        } else if (width >= 900) {
+          crossAxisCount = 2;
+        }
+
+        if (crossAxisCount == 1) {
+          return ReorderableListView.builder(
+            itemCount: widget.items.length,
+            padding: EdgeInsets.only(top: topPadding, bottom: 180, left: 12, right: 12),
+            onReorderStart: (_) {
+              HapticFeedback.mediumImpact();
+            },
+            // ignore: deprecated_member_use
+            onReorder: (oldIndex, newIndex) {
+              HapticFeedback.selectionClick();
+              widget.onReorderItems(oldIndex, newIndex);
+            },
+            itemBuilder: (context, index) {
+              final item = widget.items[index];
+              return KeyedSubtree(
+                key: ValueKey('reorder_${item.id}'),
+                child: _buildItemCard(item),
+              );
+            },
+          );
+        } else {
+          final tileWidth = (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
+
+          return GridView.builder(
+            itemCount: widget.items.length,
+            padding: EdgeInsets.only(left: 12, right: 12, bottom: 150, top: topPadding),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisExtent: _isCompactView ? 95 : 240,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemBuilder: (context, index) {
+              return _buildReorderableGridItem(index, crossAxisCount, tileWidth);
+            },
+          );
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
+    final isPriceFiltered = (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
+        (widget.maxPriceFilter != null && widget.maxPriceFilter! < (maxLimit - 0.01));
+
+    final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) +
+        (widget.showOnlyCurrentlyUsed ? 1 : 0) +
+        widget.selectedCategoryIds.length +
+        widget.selectedItemTypes.length +
+        (widget.searchQuery.isNotEmpty ? 1 : 0) +
+        (isPriceFiltered ? 1 : 0);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideScreen = constraints.maxWidth >= 900;
+
+        // Top buttons bar widget (always stays at top on both wide & small screens!)
+        final topButtonsBar = Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton.filledTonal(
+                style: activeFilterCount > 0
+                    ? IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        foregroundColor: theme.colorScheme.onPrimaryContainer,
+                      )
+                    : null,
+                tooltip: activeFilterCount > 0
+                    ? 'Filters ($activeFilterCount active)'
+                    : 'Filter & View Controls',
+                icon: Badge(
+                  isLabelVisible: activeFilterCount > 0,
+                  label: Text('$activeFilterCount'),
+                  child: Icon(
+                    isWideScreen
+                        ? (widget.isSidePanelOpen ? Icons.filter_list_off : Icons.filter_list)
+                        : (_isFilterExpanded ? Icons.filter_list_off : Icons.filter_list),
+                  ),
+                ),
+                onPressed: () {
+                  if (isWideScreen) {
+                    widget.onToggleSidePanel();
+                  } else {
+                    setState(() {
+                      _isFilterExpanded = !_isFilterExpanded;
+                    });
+                  }
+                },
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: widget.onOpenSettings,
+              ),
+            ],
+          ),
+        );
+
+        // WIDE SCREEN LAYOUT: Top Buttons Stay Above Items; Side Panel Toggled via Side Panel Callback
+        if (isWideScreen) {
+          return Column(
+            children: [
+              topButtonsBar,
+              Expanded(
+                child: widget.items.isEmpty
+                    ? _buildEmptyState(theme, activeFilterCount)
+                    : _buildItemsListOrGrid(4.0),
+              ),
+            ],
+          );
+        }
+
+        // SMALL SCREEN LAYOUT (Phones): Inline Expandable Section (Appears ON TOP of buttons area when expanded, pushing items list DOWN)
+        return Column(
+          children: [
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 250),
+              crossFadeState: _isFilterExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              // CLOSED STATE: Filter Button (Left) & Settings Button (Right)
+              firstChild: topButtonsBar,
+              // EXPANDED STATE: Appears in place / on top of buttons, pushing items list DOWN inline!
+              secondChild: Container(
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Material(
+                  color: isDarkMode
+                      ? const Color(0xFF1E2634)
+                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 5 Submenu Icon Tabs Row
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.category_outlined,
+                            color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Categories',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 0),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.monetization_on_outlined,
+                            color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Price Range',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 1),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.check_circle_outline,
+                            color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Status & Type',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 2),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.search,
+                            color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Search',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 3),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.tune,
+                            color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Display & Sort',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 4),
+                        ),
+                        const Spacer(),
+                        if (activeFilterCount > 0)
+                          TextButton(
+                            onPressed: widget.onResetFilters,
+                            child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          tooltip: 'Collapse Section',
+                          onPressed: () => setState(() => _isFilterExpanded = false),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 12),
+                    _buildSubmenuPanel(context, theme, isDarkMode),
+                  ],
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+
+            // Items List or Grid (Pushed DOWN by the expanded inline section)
+            Expanded(
+              child: widget.items.isEmpty
+                  ? _buildEmptyState(theme, activeFilterCount)
+                  : _buildItemsListOrGrid(4.0),
+            ),
+          ],
+        );
+      },
     );
   }
 }

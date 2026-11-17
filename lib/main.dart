@@ -277,8 +277,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _selectedCategoryIds = {};
   Set<ItemType> _selectedItemTypes = {};
   bool _showOnlyGoalReached = false;
+  bool _showOnlyCurrentlyUsed = false;
   double? _minPriceFilter;
   double? _maxPriceFilter;
+  SortOption _sortOption = SortOption.defaultOrder;
+  SortDirection _sortDirection = SortDirection.ascending;
+  bool _isSidePanelOpen = false;
 
   double get _maxItemPrice {
     if (_items.isEmpty) return 100.0;
@@ -288,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Item> get _filteredItems {
     final maxP = _maxItemPrice;
-    return _items.where((item) {
+    final filtered = _items.where((item) {
       final matchesQuery = _searchQuery.isEmpty ||
           item.name.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchesCategory = _selectedCategoryIds.isEmpty ||
@@ -296,13 +300,46 @@ class _HomeScreenState extends State<HomeScreen> {
       final matchesItemType = _selectedItemTypes.isEmpty ||
           _selectedItemTypes.contains(item.itemType);
       final matchesGoalFilter = !_showOnlyGoalReached || item.isGoalReached;
+      final matchesCurrentlyUsed = !_showOnlyCurrentlyUsed || item.isCurrentlyUsed;
 
       final minP = _minPriceFilter ?? 0.0;
       final maxPFilter = _maxPriceFilter ?? maxP;
       final matchesPrice = item.price >= minP && item.price <= (maxPFilter + 0.01);
 
-      return matchesQuery && matchesCategory && matchesItemType && matchesGoalFilter && matchesPrice;
+      return matchesQuery &&
+          matchesCategory &&
+          matchesItemType &&
+          matchesGoalFilter &&
+          matchesCurrentlyUsed &&
+          matchesPrice;
     }).toList();
+
+    if (_sortOption != SortOption.defaultOrder) {
+      final isAsc = _sortDirection == SortDirection.ascending;
+      switch (_sortOption) {
+        case SortOption.alphabetical:
+          filtered.sort((a, b) => isAsc
+              ? a.name.toLowerCase().compareTo(b.name.toLowerCase())
+              : b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+          break;
+        case SortOption.cost:
+          filtered.sort((a, b) => isAsc
+              ? a.effectiveTotalPrice.compareTo(b.effectiveTotalPrice)
+              : b.effectiveTotalPrice.compareTo(a.effectiveTotalPrice));
+          break;
+        case SortOption.usageStreak:
+          filtered.sort((a, b) => isAsc
+              ? a.usageStreak.compareTo(b.usageStreak)
+              : b.usageStreak.compareTo(a.usageStreak));
+          break;
+        case SortOption.defaultOrder:
+          break;
+      }
+    } else if (_sortDirection == SortDirection.descending) {
+      return filtered.reversed.toList();
+    }
+
+    return filtered;
   }
 
   void _resetFilters() {
@@ -311,8 +348,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedCategoryIds = {};
       _selectedItemTypes = {};
       _showOnlyGoalReached = false;
+      _showOnlyCurrentlyUsed = false;
       _minPriceFilter = null;
       _maxPriceFilter = null;
+      _sortOption = SortOption.defaultOrder;
+      _sortDirection = SortDirection.ascending;
     });
   }
 
@@ -579,11 +619,231 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildWideSidePanel(BuildContext context, ThemeData theme, bool isDarkMode) {
+    final maxLimit = _maxItemPrice;
+    final currentMin = (_minPriceFilter ?? 0.0).clamp(0.0, maxLimit);
+    final currentMax = (_maxPriceFilter ?? maxLimit).clamp(currentMin, maxLimit);
+    final noCategorySelected = _selectedCategoryIds.isEmpty;
+
+    final isSingleExplicit = _selectedItemTypes.contains(ItemType.singlePurchase);
+    final isSubscriptionExplicit = _selectedItemTypes.contains(ItemType.subscription);
+
+    return Container(
+      width: 310,
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF1E2634) : theme.colorScheme.surface,
+        border: Border(
+          right: BorderSide(
+            color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    child: Icon(Icons.filter_list, color: theme.colorScheme.onPrimaryContainer),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Filter Controls',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => setState(() => _isSidePanelOpen = false),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Stacked Submenus List
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Search Section
+                    Text('SEARCH ITEM', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Type item name...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        isDense: true,
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      ),
+                      onChanged: (q) => setState(() => _searchQuery = q),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+
+                    // 2. Categories Section
+                    Text('CATEGORIES', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    ..._categories.map((cat) {
+                      final isExplicitlySelected = _selectedCategoryIds.contains(cat.id);
+                      final isChecked = noCategorySelected || isExplicitlySelected;
+                      final isGrayCheck = noCategorySelected;
+
+                      return CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(cat.displayName, style: TextStyle(fontSize: 13, fontWeight: isExplicitlySelected ? FontWeight.bold : FontWeight.normal)),
+                        secondary: Icon(cat.icon, size: 18, color: cat.color),
+                        activeColor: isGrayCheck ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400) : theme.colorScheme.primary,
+                        value: isChecked,
+                        onChanged: (val) {
+                          setState(() {
+                            if (noCategorySelected) {
+                              _selectedCategoryIds = {cat.id};
+                            } else {
+                              if (val == true) {
+                                _selectedCategoryIds.add(cat.id);
+                              } else {
+                                _selectedCategoryIds.remove(cat.id);
+                              }
+                            }
+                          });
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+
+                    // 3. Price Range Section
+                    Text('PRICE RANGE', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text('${_currency.format(currentMin)} – ${_currency.format(currentMax)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    RangeSlider(
+                      values: RangeValues(currentMin, currentMax),
+                      min: 0.0,
+                      max: maxLimit,
+                      onChanged: (v) {
+                        setState(() {
+                          _minPriceFilter = v.start <= 0.01 ? null : v.start;
+                          _maxPriceFilter = v.end >= (maxLimit - 0.01) ? null : v.end;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+
+                    // 4. Status & Type Section
+                    Text('STATUS & TYPE', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Subscription', style: TextStyle(fontSize: 13)),
+                      value: isSubscriptionExplicit,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedItemTypes.add(ItemType.subscription);
+                          } else {
+                            _selectedItemTypes.remove(ItemType.subscription);
+                          }
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Single Purchase', style: TextStyle(fontSize: 13)),
+                      value: isSingleExplicit,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedItemTypes.add(ItemType.singlePurchase);
+                          } else {
+                            _selectedItemTypes.remove(ItemType.singlePurchase);
+                          }
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Currently Used', style: TextStyle(fontSize: 13)),
+                      value: _showOnlyCurrentlyUsed,
+                      onChanged: (val) => setState(() => _showOnlyCurrentlyUsed = val ?? false),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Goal Reached', style: TextStyle(fontSize: 13)),
+                      value: _showOnlyGoalReached,
+                      onChanged: (val) => setState(() => _showOnlyGoalReached = val ?? false),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+
+                    // 5. Display & Sorting
+                    Text('SORTING', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    DropdownButton<SortOption>(
+                      value: _sortOption,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: SortOption.defaultOrder, child: Text('Default Order')),
+                        DropdownMenuItem(value: SortOption.alphabetical, child: Text('Alphabetically')),
+                        DropdownMenuItem(value: SortOption.cost, child: Text('Cost / Price')),
+                        DropdownMenuItem(value: SortOption.usageStreak, child: Text('Usage Streak')),
+                      ],
+                      onChanged: (opt) {
+                        if (opt != null) setState(() => _sortOption = opt);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<SortDirection>(
+                      segments: const [
+                        ButtonSegment(value: SortDirection.ascending, icon: Icon(Icons.arrow_upward, size: 16), label: Text('Asc')),
+                        ButtonSegment(value: SortDirection.descending, icon: Icon(Icons.arrow_downward, size: 16), label: Text('Desc')),
+                      ],
+                      selected: {_sortDirection},
+                      onSelectionChanged: (s) => setState(() => _sortDirection = s.first),
+                    ),
+
+                    const SizedBox(height: 20),
+                    OutlinedButton.icon(
+                      onPressed: _resetFilters,
+                      icon: const Icon(Icons.restart_alt, size: 16),
+                      label: const Text('Reset All Filters'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     final filtered = _filteredItems;
     final pendingCount = _pendingReviewCount;
+    final isWideScreen = MediaQuery.of(context).size.width >= 900;
 
     if (_isLoading) {
       return Scaffold(
@@ -594,7 +854,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Scaffold(
+    Widget mainAppScaffold = Scaffold(
       extendBody: true,
       appBar: null,
       body: SafeArea(
@@ -610,9 +870,13 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedCategoryIds: _selectedCategoryIds,
               selectedItemTypes: _selectedItemTypes,
               showOnlyGoalReached: _showOnlyGoalReached,
+              showOnlyCurrentlyUsed: _showOnlyCurrentlyUsed,
               maxItemPrice: _maxItemPrice,
               minPriceFilter: _minPriceFilter,
               maxPriceFilter: _maxPriceFilter,
+              sortOption: _sortOption,
+              sortDirection: _sortDirection,
+              isSidePanelOpen: _isSidePanelOpen,
               showSegmentedProgressBar: _showSegmentedProgressBar,
               currency: _currency,
               onSearchQueryChanged: (query) {
@@ -635,10 +899,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showOnlyGoalReached = goalOnly;
                 });
               },
+              onCurrentlyUsedFilterChanged: (currentlyUsedOnly) {
+                setState(() {
+                  _showOnlyCurrentlyUsed = currentlyUsedOnly;
+                });
+              },
               onPriceFilterChanged: (minP, maxP) {
                 setState(() {
                   _minPriceFilter = minP;
                   _maxPriceFilter = maxP;
+                });
+              },
+              onApplySorting: (opt, dir) {
+                setState(() {
+                  _sortOption = opt;
+                  _sortDirection = dir;
+                });
+              },
+              onToggleSidePanel: () {
+                setState(() {
+                  _isSidePanelOpen = !_isSidePanelOpen;
                 });
               },
               onResetFilters: _resetFilters,
@@ -683,5 +963,21 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : null,
     );
+
+    if (isWideScreen && _isSidePanelOpen) {
+      return Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: SafeArea(
+          child: Row(
+            children: [
+              _buildWideSidePanel(context, theme, isDarkMode),
+              Expanded(child: mainAppScaffold),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return mainAppScaffold;
   }
 }
