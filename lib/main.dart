@@ -283,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
   SortOption _sortOption = SortOption.defaultOrder;
   SortDirection _sortDirection = SortDirection.ascending;
   bool _isFilterExpanded = false;
+  double _sidePanelWidth = 310.0;
 
   double get _maxItemPrice {
     if (_items.isEmpty) return 100.0;
@@ -629,7 +630,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSubscriptionExplicit = _selectedItemTypes.contains(ItemType.subscription);
 
     return Container(
-      width: 310,
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF1E2634) : theme.colorScheme.surface,
         border: Border(
@@ -829,8 +829,50 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: Row(
           children: [
-            if (isWideScreen && _isFilterExpanded)
-              _buildWideSidePanel(context, theme, isDarkMode),
+            if (isWideScreen && _isFilterExpanded) ...[
+              SizedBox(
+                width: _sidePanelWidth.clamp(
+                  220.0,
+                  (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0),
+                ),
+                child: _buildWideSidePanel(context, theme, isDarkMode),
+              ),
+              MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragUpdate: (details) {
+                    final maxW = (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0);
+                    setState(() {
+                      _sidePanelWidth = (_sidePanelWidth + details.delta.dx).clamp(220.0, maxW);
+                    });
+                  },
+                  child: Container(
+                    width: 14,
+                    color: Colors.transparent,
+                    child: Center(
+                      child: Container(
+                        width: 4,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? const Color(0xFF3B485E)
+                              : theme.colorScheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.drag_indicator,
+                            size: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             Expanded(
               child: IndexedStack(
                 index: _currentTabIndex,

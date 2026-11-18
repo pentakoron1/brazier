@@ -800,109 +800,105 @@ class _ItemsViewState extends State<ItemsView> {
       );
     }
 
-    // SMALL SCREEN LAYOUT (Phones): Items List Fills Background; Floating Filter & Settings Buttons Floating Directly Above Items
-    final topPaddingForList = widget.isFilterExpanded ? 260.0 : 56.0;
-
-    return Stack(
+    // SMALL SCREEN LAYOUT (Phones): Inline Filter Section Pushes Items List DOWN; Floating Buttons Float at Top of Items
+    return Column(
       children: [
-        // Layer 1: Items List/Grid filling background directly behind floating controls
-        Positioned.fill(
-          child: widget.items.isEmpty
-              ? _buildEmptyState(theme, activeFilterCount)
-              : _buildItemsListOrGrid(topPaddingForList),
-        ),
-
-        // Layer 2: Floating Controls (Top Filter Section when expanded + Floating Filter & Settings Buttons Pushed Down Below It)
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.isFilterExpanded)
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Material(
-                    elevation: 6,
-                    color: isDarkMode
-                        ? const Color(0xFF1E2634)
-                        : theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    clipBehavior: Clip.antiAlias,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 5 Submenu Icon Tabs Row (No title text, no close X icon)
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  Icons.category_outlined,
-                                  color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
-                                ),
-                                tooltip: 'Categories',
-                                onPressed: () => setState(() => _activeSubmenuIndex = 0),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.monetization_on_outlined,
-                                  color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
-                                ),
-                                tooltip: 'Price Range',
-                                onPressed: () => setState(() => _activeSubmenuIndex = 1),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.check_circle_outline,
-                                  color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
-                                ),
-                                tooltip: 'Status & Type',
-                                onPressed: () => setState(() => _activeSubmenuIndex = 2),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.search,
-                                  color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
-                                ),
-                                tooltip: 'Search',
-                                onPressed: () => setState(() => _activeSubmenuIndex = 3),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.tune,
-                                  color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
-                                ),
-                                tooltip: 'Display & Sort',
-                                onPressed: () => setState(() => _activeSubmenuIndex = 4),
-                              ),
-                              const Spacer(),
-                              if (activeFilterCount > 0)
-                                TextButton(
-                                  onPressed: widget.onResetFilters,
-                                  child: const Text('Clear All', style: TextStyle(fontSize: 12)),
-                                ),
-                            ],
-                          ),
-                          const Divider(height: 12),
-                          _buildSubmenuPanel(context, theme, isDarkMode),
-                        ],
-                      ),
-                    ),
+        // Real Layout Filter Section (pushes everything below down)
+        if (widget.isFilterExpanded)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Material(
+              elevation: 4,
+              color: isDarkMode
+                  ? const Color(0xFF1E2634)
+                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
                   ),
                 ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 5 Submenu Icon Tabs Row
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.category_outlined,
+                            color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Categories',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 0),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.monetization_on_outlined,
+                            color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Price Range',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 1),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.check_circle_outline,
+                            color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Status & Type',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 2),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.search,
+                            color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Search',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 3),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.tune,
+                            color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
+                          ),
+                          tooltip: 'Display & Sort',
+                          onPressed: () => setState(() => _activeSubmenuIndex = 4),
+                        ),
+                        const Spacer(),
+                        if (activeFilterCount > 0)
+                          TextButton(
+                            onPressed: widget.onResetFilters,
+                            child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                          ),
+                      ],
+                    ),
+                    const Divider(height: 12),
+                    _buildSubmenuPanel(context, theme, isDarkMode),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
-              // Floating Buttons Row (Floating directly on top of items cards!)
-              buildFloatingButtonsRow(),
+        // Items Area with Floating Buttons Floating Directly Above Item Cards
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: widget.items.isEmpty
+                    ? _buildEmptyState(theme, activeFilterCount)
+                    : _buildItemsListOrGrid(56.0),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: buildFloatingButtonsRow(),
+              ),
             ],
           ),
         ),
