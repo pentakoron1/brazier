@@ -736,21 +736,20 @@ class _ItemsViewState extends State<ItemsView> {
 
     final isWideScreen = MediaQuery.of(context).size.width >= 900;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Always-accessible top buttons bar (Filter Button Left, Settings Right)
-        final topButtonsBar = Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton.filledTonal(
-                style: activeFilterCount > 0
-                    ? IconButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        foregroundColor: theme.colorScheme.onPrimaryContainer,
-                      )
-                    : null,
+    // Floating action buttons row (Filter left, Settings right) with NO bar background behind them
+    Widget buildFloatingButtonsRow() {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Material(
+              elevation: 4,
+              shape: const CircleBorder(),
+              color: activeFilterCount > 0
+                  ? theme.colorScheme.primaryContainer
+                  : (isDarkMode ? const Color(0xFF242C3B) : theme.colorScheme.surface),
+              child: IconButton(
                 tooltip: activeFilterCount > 0
                     ? 'Filters ($activeFilterCount active)'
                     : 'Filter & View Controls',
@@ -759,127 +758,155 @@ class _ItemsViewState extends State<ItemsView> {
                   label: Text('$activeFilterCount'),
                   child: Icon(
                     widget.isFilterExpanded ? Icons.filter_list_off : Icons.filter_list,
+                    color: activeFilterCount > 0
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurface,
                   ),
                 ),
                 onPressed: widget.onToggleFilter,
               ),
-              IconButton.filledTonal(
+            ),
+            Material(
+              elevation: 4,
+              shape: const CircleBorder(),
+              color: isDarkMode ? const Color(0xFF242C3B) : theme.colorScheme.surface,
+              child: IconButton(
                 tooltip: 'Settings',
                 icon: const Icon(Icons.settings_outlined),
                 onPressed: widget.onOpenSettings,
               ),
-            ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // WIDE SCREEN LAYOUT: Floating Buttons Directly Above Items Grid; Side Panel on Left via HomeScreen
+    if (isWideScreen) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: widget.items.isEmpty
+                ? _buildEmptyState(theme, activeFilterCount)
+                : _buildItemsListOrGrid(56.0),
           ),
-        );
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: buildFloatingButtonsRow(),
+          ),
+        ],
+      );
+    }
 
-        // WIDE SCREEN LAYOUT: Top Buttons Stay Above Items; Side Panel Rendered on Far Left via HomeScreen
-        if (isWideScreen) {
-          return Column(
+    // SMALL SCREEN LAYOUT (Phones): Items List Fills Background; Floating Filter & Settings Buttons Floating Directly Above Items
+    final topPaddingForList = widget.isFilterExpanded ? 260.0 : 56.0;
+
+    return Stack(
+      children: [
+        // Layer 1: Items List/Grid filling background directly behind floating controls
+        Positioned.fill(
+          child: widget.items.isEmpty
+              ? _buildEmptyState(theme, activeFilterCount)
+              : _buildItemsListOrGrid(topPaddingForList),
+        ),
+
+        // Layer 2: Floating Controls (Top Filter Section when expanded + Floating Filter & Settings Buttons Pushed Down Below It)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              topButtonsBar,
-              Expanded(
-                child: widget.items.isEmpty
-                    ? _buildEmptyState(theme, activeFilterCount)
-                    : _buildItemsListOrGrid(4.0),
-              ),
-            ],
-          );
-        }
-
-        // SMALL SCREEN LAYOUT (Phones): Expandable Top Section (Pushes Top Buttons & Items List DOWN!)
-        return Column(
-          children: [
-            if (widget.isFilterExpanded)
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Material(
-                  color: isDarkMode
-                      ? const Color(0xFF1E2634)
-                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 5 Submenu Icon Tabs Row (No title text, no close X icon)
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.category_outlined,
-                                color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
-                              ),
-                              tooltip: 'Categories',
-                              onPressed: () => setState(() => _activeSubmenuIndex = 0),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.monetization_on_outlined,
-                                color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
-                              ),
-                              tooltip: 'Price Range',
-                              onPressed: () => setState(() => _activeSubmenuIndex = 1),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.check_circle_outline,
-                                color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
-                              ),
-                              tooltip: 'Status & Type',
-                              onPressed: () => setState(() => _activeSubmenuIndex = 2),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.search,
-                                color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
-                              ),
-                              tooltip: 'Search',
-                              onPressed: () => setState(() => _activeSubmenuIndex = 3),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.tune,
-                                color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
-                              ),
-                              tooltip: 'Display & Sort',
-                              onPressed: () => setState(() => _activeSubmenuIndex = 4),
-                            ),
-                            const Spacer(),
-                            if (activeFilterCount > 0)
-                              TextButton(
-                                onPressed: widget.onResetFilters,
-                                child: const Text('Clear All', style: TextStyle(fontSize: 12)),
-                              ),
-                          ],
+              if (widget.isFilterExpanded)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Material(
+                    elevation: 6,
+                    color: isDarkMode
+                        ? const Color(0xFF1E2634)
+                        : theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    clipBehavior: Clip.antiAlias,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
                         ),
-                        const Divider(height: 12),
-                        _buildSubmenuPanel(context, theme, isDarkMode),
-                      ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // 5 Submenu Icon Tabs Row (No title text, no close X icon)
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.category_outlined,
+                                  color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
+                                ),
+                                tooltip: 'Categories',
+                                onPressed: () => setState(() => _activeSubmenuIndex = 0),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.monetization_on_outlined,
+                                  color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
+                                ),
+                                tooltip: 'Price Range',
+                                onPressed: () => setState(() => _activeSubmenuIndex = 1),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.check_circle_outline,
+                                  color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
+                                ),
+                                tooltip: 'Status & Type',
+                                onPressed: () => setState(() => _activeSubmenuIndex = 2),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.search,
+                                  color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
+                                ),
+                                tooltip: 'Search',
+                                onPressed: () => setState(() => _activeSubmenuIndex = 3),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.tune,
+                                  color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
+                                ),
+                                tooltip: 'Display & Sort',
+                                onPressed: () => setState(() => _activeSubmenuIndex = 4),
+                              ),
+                              const Spacer(),
+                              if (activeFilterCount > 0)
+                                TextButton(
+                                  onPressed: widget.onResetFilters,
+                                  child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                                ),
+                            ],
+                          ),
+                          const Divider(height: 12),
+                          _buildSubmenuPanel(context, theme, isDarkMode),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-            // Top Buttons Bar (Pushed down right below the filter section when expanded, making buttons always accessible!)
-            topButtonsBar,
-
-            // Items List or Grid (Pushed DOWN by the filter section & top buttons bar)
-            Expanded(
-              child: widget.items.isEmpty
-                  ? _buildEmptyState(theme, activeFilterCount)
-                  : _buildItemsListOrGrid(4.0),
-            ),
-          ],
-        );
-      },
+              // Floating Buttons Row (Floating directly on top of items cards!)
+              buildFloatingButtonsRow(),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

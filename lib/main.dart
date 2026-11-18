@@ -822,94 +822,102 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    Widget mainAppScaffold = Scaffold(
+    return Scaffold(
       extendBody: true,
       appBar: null,
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(
-          index: _currentTabIndex,
+        child: Row(
           children: [
-            // TAB 0: Items List View
-            ItemsView(
-              items: filtered,
-              categories: _categories,
-              searchQuery: _searchQuery,
-              selectedCategoryIds: _selectedCategoryIds,
-              selectedItemTypes: _selectedItemTypes,
-              showOnlyGoalReached: _showOnlyGoalReached,
-              showOnlyCurrentlyUsed: _showOnlyCurrentlyUsed,
-              maxItemPrice: _maxItemPrice,
-              minPriceFilter: _minPriceFilter,
-              maxPriceFilter: _maxPriceFilter,
-              sortOption: _sortOption,
-              sortDirection: _sortDirection,
-              isFilterExpanded: _isFilterExpanded,
-              showSegmentedProgressBar: _showSegmentedProgressBar,
-              currency: _currency,
-              onSearchQueryChanged: (query) {
-                setState(() {
-                  _searchQuery = query;
-                });
-              },
-              onCategoryFilterChanged: (categoryIds) {
-                setState(() {
-                  _selectedCategoryIds = categoryIds;
-                });
-              },
-              onItemTypeFilterChanged: (types) {
-                setState(() {
-                  _selectedItemTypes = types;
-                });
-              },
-              onGoalFilterChanged: (goalOnly) {
-                setState(() {
-                  _showOnlyGoalReached = goalOnly;
-                });
-              },
-              onCurrentlyUsedFilterChanged: (currentlyUsedOnly) {
-                setState(() {
-                  _showOnlyCurrentlyUsed = currentlyUsedOnly;
-                });
-              },
-              onPriceFilterChanged: (minP, maxP) {
-                setState(() {
-                  _minPriceFilter = minP;
-                  _maxPriceFilter = maxP;
-                });
-              },
-              onApplySorting: (opt, dir) {
-                setState(() {
-                  _sortOption = opt;
-                  _sortDirection = dir;
-                });
-              },
-              onToggleFilter: () {
-                setState(() {
-                  _isFilterExpanded = !_isFilterExpanded;
-                });
-              },
-              onResetFilters: _resetFilters,
-              onOpenSettings: _openSettings,
-              onEditItem: _openEditDialog,
-              onDeleteItem: _deleteItem,
-              onUpdateMonthlyStatus: _updateMonthlyStatus,
-              onReorderItems: _reorderItems,
-            ),
+            if (isWideScreen && _isFilterExpanded)
+              _buildWideSidePanel(context, theme, isDarkMode),
+            Expanded(
+              child: IndexedStack(
+                index: _currentTabIndex,
+                children: [
+                  // TAB 0: Items List View
+                  ItemsView(
+                    items: filtered,
+                    categories: _categories,
+                    searchQuery: _searchQuery,
+                    selectedCategoryIds: _selectedCategoryIds,
+                    selectedItemTypes: _selectedItemTypes,
+                    showOnlyGoalReached: _showOnlyGoalReached,
+                    showOnlyCurrentlyUsed: _showOnlyCurrentlyUsed,
+                    maxItemPrice: _maxItemPrice,
+                    minPriceFilter: _minPriceFilter,
+                    maxPriceFilter: _maxPriceFilter,
+                    sortOption: _sortOption,
+                    sortDirection: _sortDirection,
+                    isFilterExpanded: _isFilterExpanded,
+                    showSegmentedProgressBar: _showSegmentedProgressBar,
+                    currency: _currency,
+                    onSearchQueryChanged: (query) {
+                      setState(() {
+                        _searchQuery = query;
+                      });
+                    },
+                    onCategoryFilterChanged: (categoryIds) {
+                      setState(() {
+                        _selectedCategoryIds = categoryIds;
+                      });
+                    },
+                    onItemTypeFilterChanged: (types) {
+                      setState(() {
+                        _selectedItemTypes = types;
+                      });
+                    },
+                    onGoalFilterChanged: (goalOnly) {
+                      setState(() {
+                        _showOnlyGoalReached = goalOnly;
+                      });
+                    },
+                    onCurrentlyUsedFilterChanged: (currentlyUsedOnly) {
+                      setState(() {
+                        _showOnlyCurrentlyUsed = currentlyUsedOnly;
+                      });
+                    },
+                    onPriceFilterChanged: (minP, maxP) {
+                      setState(() {
+                        _minPriceFilter = minP;
+                        _maxPriceFilter = maxP;
+                      });
+                    },
+                    onApplySorting: (opt, dir) {
+                      setState(() {
+                        _sortOption = opt;
+                        _sortDirection = dir;
+                      });
+                    },
+                    onToggleFilter: () {
+                      setState(() {
+                        _isFilterExpanded = !_isFilterExpanded;
+                      });
+                    },
+                    onResetFilters: _resetFilters,
+                    onOpenSettings: _openSettings,
+                    onEditItem: _openEditDialog,
+                    onDeleteItem: _deleteItem,
+                    onUpdateMonthlyStatus: _updateMonthlyStatus,
+                    onReorderItems: _reorderItems,
+                  ),
 
-            // TAB 1: Monthly Review View
-            ReviewView(
-              items: _items,
-              currency: _currency,
-              onReviewItem: _handleReviewItem,
-              onResetAllReviews: _resetAllReviews,
-              onOpenSettings: _openSettings,
-            ),
+                  // TAB 1: Monthly Review View
+                  ReviewView(
+                    items: _items,
+                    currency: _currency,
+                    onReviewItem: _handleReviewItem,
+                    onResetAllReviews: _resetAllReviews,
+                    onOpenSettings: _openSettings,
+                  ),
 
-            // TAB 2: Statistics View
-            StatisticsView(
-              items: _items,
-              currency: _currency,
+                  // TAB 2: Statistics View
+                  StatisticsView(
+                    items: _items,
+                    currency: _currency,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -931,21 +939,5 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : null,
     );
-
-    if (isWideScreen && _isFilterExpanded) {
-      return Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        body: SafeArea(
-          child: Row(
-            children: [
-              _buildWideSidePanel(context, theme, isDarkMode),
-              Expanded(child: mainAppScaffold),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return mainAppScaffold;
   }
 }
