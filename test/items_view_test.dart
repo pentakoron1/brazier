@@ -33,7 +33,7 @@ void main() {
             onCurrentlyUsedFilterChanged: (_) {},
             onPriceFilterChanged: (minP, maxP) {},
             onApplySorting: (opt, dir) {},
-            onToggleSidePanel: () {},
+            onToggleFilter: () {},
             onResetFilters: () {
               resetCalled = true;
             },

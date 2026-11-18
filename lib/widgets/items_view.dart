@@ -32,7 +32,7 @@ class ItemsView extends StatefulWidget {
   final double? maxPriceFilter;
   final SortOption sortOption;
   final SortDirection sortDirection;
-  final bool isSidePanelOpen;
+  final bool isFilterExpanded;
   final bool showSegmentedProgressBar;
   final Currency currency;
   final ValueChanged<String> onSearchQueryChanged;
@@ -42,7 +42,7 @@ class ItemsView extends StatefulWidget {
   final ValueChanged<bool> onCurrentlyUsedFilterChanged;
   final Function(double? minP, double? maxP) onPriceFilterChanged;
   final Function(SortOption option, SortDirection direction) onApplySorting;
-  final VoidCallback onToggleSidePanel;
+  final VoidCallback onToggleFilter;
   final VoidCallback onResetFilters;
   final VoidCallback onOpenSettings;
   final ValueChanged<Item> onEditItem;
@@ -64,7 +64,7 @@ class ItemsView extends StatefulWidget {
     required this.maxPriceFilter,
     required this.sortOption,
     required this.sortDirection,
-    this.isSidePanelOpen = false,
+    this.isFilterExpanded = false,
     this.showSegmentedProgressBar = true,
     this.currency = Currency.euro,
     required this.onSearchQueryChanged,
@@ -74,7 +74,7 @@ class ItemsView extends StatefulWidget {
     required this.onCurrentlyUsedFilterChanged,
     required this.onPriceFilterChanged,
     required this.onApplySorting,
-    required this.onToggleSidePanel,
+    required this.onToggleFilter,
     required this.onResetFilters,
     required this.onOpenSettings,
     required this.onEditItem,
@@ -89,7 +89,6 @@ class ItemsView extends StatefulWidget {
 
 class _ItemsViewState extends State<ItemsView> {
   bool _isCompactView = false;
-  bool _isFilterExpanded = false;
   int _activeSubmenuIndex = 0; // 0: Categories, 1: Price, 2: Status, 3: Search, 4: Display/Reorder
 
   late FocusNode _searchFocusNode;
@@ -735,11 +734,11 @@ class _ItemsViewState extends State<ItemsView> {
         (widget.searchQuery.isNotEmpty ? 1 : 0) +
         (isPriceFiltered ? 1 : 0);
 
+    final isWideScreen = MediaQuery.of(context).size.width >= 900;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWideScreen = constraints.maxWidth >= 900;
-
-        // Top buttons bar widget (always stays at top on both wide & small screens!)
+        // Always-accessible top buttons bar (Filter Button Left, Settings Right)
         final topButtonsBar = Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Row(
@@ -759,20 +758,10 @@ class _ItemsViewState extends State<ItemsView> {
                   isLabelVisible: activeFilterCount > 0,
                   label: Text('$activeFilterCount'),
                   child: Icon(
-                    isWideScreen
-                        ? (widget.isSidePanelOpen ? Icons.filter_list_off : Icons.filter_list)
-                        : (_isFilterExpanded ? Icons.filter_list_off : Icons.filter_list),
+                    widget.isFilterExpanded ? Icons.filter_list_off : Icons.filter_list,
                   ),
                 ),
-                onPressed: () {
-                  if (isWideScreen) {
-                    widget.onToggleSidePanel();
-                  } else {
-                    setState(() {
-                      _isFilterExpanded = !_isFilterExpanded;
-                    });
-                  }
-                },
+                onPressed: widget.onToggleFilter,
               ),
               IconButton.filledTonal(
                 tooltip: 'Settings',
@@ -783,7 +772,7 @@ class _ItemsViewState extends State<ItemsView> {
           ),
         );
 
-        // WIDE SCREEN LAYOUT: Top Buttons Stay Above Items; Side Panel Toggled via Side Panel Callback
+        // WIDE SCREEN LAYOUT: Top Buttons Stay Above Items; Side Panel Rendered on Far Left via HomeScreen
         if (isWideScreen) {
           return Column(
             children: [
@@ -797,18 +786,11 @@ class _ItemsViewState extends State<ItemsView> {
           );
         }
 
-        // SMALL SCREEN LAYOUT (Phones): Inline Expandable Section (Appears ON TOP of buttons area when expanded, pushing items list DOWN)
+        // SMALL SCREEN LAYOUT (Phones): Expandable Top Section (Pushes Top Buttons & Items List DOWN!)
         return Column(
           children: [
-            AnimatedCrossFade(
-              duration: const Duration(milliseconds: 250),
-              crossFadeState: _isFilterExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              // CLOSED STATE: Filter Button (Left) & Settings Button (Right)
-              firstChild: topButtonsBar,
-              // EXPANDED STATE: Appears in place / on top of buttons, pushing items list DOWN inline!
-              secondChild: Container(
+            if (widget.isFilterExpanded)
+              Container(
                 margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Material(
                   color: isDarkMode
@@ -826,73 +808,70 @@ class _ItemsViewState extends State<ItemsView> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 5 Submenu Icon Tabs Row
-                    Row(
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.category_outlined,
-                            color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
-                          ),
-                          tooltip: 'Categories',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 0),
+                        // 5 Submenu Icon Tabs Row (No title text, no close X icon)
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.category_outlined,
+                                color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
+                              ),
+                              tooltip: 'Categories',
+                              onPressed: () => setState(() => _activeSubmenuIndex = 0),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.monetization_on_outlined,
+                                color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
+                              ),
+                              tooltip: 'Price Range',
+                              onPressed: () => setState(() => _activeSubmenuIndex = 1),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.check_circle_outline,
+                                color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
+                              ),
+                              tooltip: 'Status & Type',
+                              onPressed: () => setState(() => _activeSubmenuIndex = 2),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.search,
+                                color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
+                              ),
+                              tooltip: 'Search',
+                              onPressed: () => setState(() => _activeSubmenuIndex = 3),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.tune,
+                                color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
+                              ),
+                              tooltip: 'Display & Sort',
+                              onPressed: () => setState(() => _activeSubmenuIndex = 4),
+                            ),
+                            const Spacer(),
+                            if (activeFilterCount > 0)
+                              TextButton(
+                                onPressed: widget.onResetFilters,
+                                child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                              ),
+                          ],
                         ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.monetization_on_outlined,
-                            color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
-                          ),
-                          tooltip: 'Price Range',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 1),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.check_circle_outline,
-                            color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
-                          ),
-                          tooltip: 'Status & Type',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 2),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.search,
-                            color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
-                          ),
-                          tooltip: 'Search',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 3),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.tune,
-                            color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
-                          ),
-                          tooltip: 'Display & Sort',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 4),
-                        ),
-                        const Spacer(),
-                        if (activeFilterCount > 0)
-                          TextButton(
-                            onPressed: widget.onResetFilters,
-                            child: const Text('Clear All', style: TextStyle(fontSize: 12)),
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          tooltip: 'Collapse Section',
-                          onPressed: () => setState(() => _isFilterExpanded = false),
-                        ),
+                        const Divider(height: 12),
+                        _buildSubmenuPanel(context, theme, isDarkMode),
                       ],
                     ),
-                    const Divider(height: 12),
-                    _buildSubmenuPanel(context, theme, isDarkMode),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
 
-            // Items List or Grid (Pushed DOWN by the expanded inline section)
+            // Top Buttons Bar (Pushed down right below the filter section when expanded, making buttons always accessible!)
+            topButtonsBar,
+
+            // Items List or Grid (Pushed DOWN by the filter section & top buttons bar)
             Expanded(
               child: widget.items.isEmpty
                   ? _buildEmptyState(theme, activeFilterCount)

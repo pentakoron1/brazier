@@ -282,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _maxPriceFilter;
   SortOption _sortOption = SortOption.defaultOrder;
   SortDirection _sortDirection = SortDirection.ascending;
-  bool _isSidePanelOpen = false;
+  bool _isFilterExpanded = false;
 
   double get _maxItemPrice {
     if (_items.isEmpty) return 100.0;
@@ -639,39 +639,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    child: Icon(Icons.filter_list, color: theme.colorScheme.onPrimaryContainer),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Filter Controls',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => setState(() => _isSidePanelOpen = false),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-
-            // Stacked Submenus List
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 1. Search Section
                     Text('SEARCH ITEM', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
@@ -831,10 +802,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
+          );
   }
 
   @override
@@ -876,7 +844,7 @@ class _HomeScreenState extends State<HomeScreen> {
               maxPriceFilter: _maxPriceFilter,
               sortOption: _sortOption,
               sortDirection: _sortDirection,
-              isSidePanelOpen: _isSidePanelOpen,
+              isFilterExpanded: _isFilterExpanded,
               showSegmentedProgressBar: _showSegmentedProgressBar,
               currency: _currency,
               onSearchQueryChanged: (query) {
@@ -916,9 +884,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   _sortDirection = dir;
                 });
               },
-              onToggleSidePanel: () {
+              onToggleFilter: () {
                 setState(() {
-                  _isSidePanelOpen = !_isSidePanelOpen;
+                  _isFilterExpanded = !_isFilterExpanded;
                 });
               },
               onResetFilters: _resetFilters,
@@ -964,7 +932,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : null,
     );
 
-    if (isWideScreen && _isSidePanelOpen) {
+    if (isWideScreen && _isFilterExpanded) {
       return Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: SafeArea(
