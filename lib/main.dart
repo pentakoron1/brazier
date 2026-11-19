@@ -174,6 +174,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
+  double _sidePanelWidth = 310.0;
 
   // Display preferences
   bool _showSegmentedProgressBar = true;
@@ -274,19 +275,88 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _searchQuery = '';
-  Category? _selectedCategoryFilter;
-  bool _showOnlyGoalReached = false;
+  Set<String> _selectedCategoryIds = {};
+  Set<ItemType> _selectedItemTypes = {};
+  Set<bool> _goalSelection = {};
+  Set<MonthlyReviewStatus> _usageSelection = {};
+  double? _minPriceFilter;
+  double? _maxPriceFilter;
+  SortOption _sortOption = SortOption.defaultOrder;
+  SortDirection _sortDirection = SortDirection.ascending;
+  bool _isFilterExpanded = false;
+
+  double get _maxItemPrice {
+    if (_items.isEmpty) return 100.0;
+    final maxP = _items.fold(0.0, (maxVal, item) => item.price > maxVal ? item.price : maxVal);
+    return maxP > 0 ? maxP : 100.0;
+  }
 
   List<Item> get _filteredItems {
-    return _items.where((item) {
+    final maxP = _maxItemPrice;
+    final filtered = _items.where((item) {
       final matchesQuery = _searchQuery.isEmpty ||
           item.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesCategory = _selectedCategoryFilter == null ||
-          item.category.id == _selectedCategoryFilter!.id;
-      final matchesGoalFilter = !_showOnlyGoalReached || item.isGoalReached;
+      final matchesCategory = _selectedCategoryIds.isEmpty ||
+          _selectedCategoryIds.contains(item.category.id);
+      final matchesItemType = _selectedItemTypes.isEmpty ||
+          _selectedItemTypes.contains(item.itemType);
+      final matchesGoalFilter =
+          _goalSelection.length != 1 || _goalSelection.contains(item.isGoalReached);
+      final matchesUsage = _usageSelection.isEmpty ||
+          _usageSelection.contains(item.currentMonthlyStatus);
 
-      return matchesQuery && matchesCategory && matchesGoalFilter;
+      final minP = _minPriceFilter ?? 0.0;
+      final maxPFilter = _maxPriceFilter ?? maxP;
+      final matchesPrice = item.price >= minP && item.price <= (maxPFilter + 0.01);
+
+      return matchesQuery &&
+          matchesCategory &&
+          matchesItemType &&
+          matchesGoalFilter &&
+          matchesUsage &&
+          matchesPrice;
     }).toList();
+
+    if (_sortOption != SortOption.defaultOrder) {
+      final isAsc = _sortDirection == SortDirection.ascending;
+      switch (_sortOption) {
+        case SortOption.alphabetical:
+          filtered.sort((a, b) => isAsc
+              ? a.name.toLowerCase().compareTo(b.name.toLowerCase())
+              : b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+          break;
+        case SortOption.cost:
+          filtered.sort((a, b) => isAsc
+              ? a.effectiveTotalPrice.compareTo(b.effectiveTotalPrice)
+              : b.effectiveTotalPrice.compareTo(a.effectiveTotalPrice));
+          break;
+        case SortOption.usageStreak:
+          filtered.sort((a, b) => isAsc
+              ? a.usageStreak.compareTo(b.usageStreak)
+              : b.usageStreak.compareTo(a.usageStreak));
+          break;
+        case SortOption.defaultOrder:
+          break;
+      }
+    } else if (_sortDirection == SortDirection.descending) {
+      return filtered.reversed.toList();
+    }
+
+    return filtered;
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedCategoryIds = {};
+      _selectedItemTypes = {};
+      _goalSelection = {};
+      _usageSelection = {};
+      _minPriceFilter = null;
+      _maxPriceFilter = null;
+      _sortOption = SortOption.defaultOrder;
+      _sortDirection = SortDirection.ascending;
+    });
   }
 
   int get _pendingReviewCount {
@@ -351,9 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
           item.category = fallbackCat;
         }
       }
-      if (_selectedCategoryFilter?.id == categoryId) {
-        _selectedCategoryFilter = null;
-      }
+      _selectedCategoryIds.remove(categoryId);
     });
     StorageService.saveCategories(_categories);
     StorageService.saveItems(_items);
@@ -554,19 +622,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String get _appBarTitle {
-    switch (_currentTabIndex) {
-      case 0:
-        return 'Brazier Items';
-      case 1:
-        return 'Monthly Review';
-      case 2:
-        return 'Overview & Statistics';
-      default:
-        return 'Brazier';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -582,50 +637,14 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Scaffold(
+    final isWideScreen = MediaQuery.of(context).size.width >= 900;
+    final sidePanelOffset = (isWideScreen && _isFilterExpanded && _currentTabIndex == 0)
+        ? _sidePanelWidth + 14.0 // 14.0 px accounts for the resize drag bar
+        : 0.0;
+
+    Widget mainAppScaffold = Scaffold(
       extendBody: true,
-      appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface,
-        scrolledUnderElevation: 0.0,
-        surfaceTintColor: Colors.transparent,
-        notificationPredicate: (ScrollNotification notification) => false,
-        title: Row(
-          children: [
-            Image.asset(
-              'asset/icon/logo.png',
-              height: 28,
-              width: 28,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.local_fire_department, color: AppColors.primaryOrange),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _appBarTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: _openSettings,
-          ),
-          if (_currentTabIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Add Item',
-              onPressed: _openAddDialog,
-            ),
-        ],
-      ),
+      appBar: null,
       body: SafeArea(
         bottom: false,
         child: IndexedStack(
@@ -636,8 +655,16 @@ class _HomeScreenState extends State<HomeScreen> {
               items: filtered,
               categories: _categories,
               searchQuery: _searchQuery,
-              selectedCategoryFilter: _selectedCategoryFilter,
-              showOnlyGoalReached: _showOnlyGoalReached,
+              selectedCategoryIds: _selectedCategoryIds,
+              selectedItemTypes: _selectedItemTypes,
+              goalSelection: _goalSelection,
+              usageSelection: _usageSelection,
+              maxItemPrice: _maxItemPrice,
+              minPriceFilter: _minPriceFilter,
+              maxPriceFilter: _maxPriceFilter,
+              sortOption: _sortOption,
+              sortDirection: _sortDirection,
+              isFilterExpanded: _isFilterExpanded,
               showSegmentedProgressBar: _showSegmentedProgressBar,
               currency: _currency,
               onSearchQueryChanged: (query) {
@@ -645,20 +672,54 @@ class _HomeScreenState extends State<HomeScreen> {
                   _searchQuery = query;
                 });
               },
-              onCategoryFilterChanged: (category) {
+              onCategoryFilterChanged: (categoryIds) {
                 setState(() {
-                  _selectedCategoryFilter = category;
+                  _selectedCategoryIds = categoryIds;
                 });
               },
-              onGoalFilterChanged: (goalOnly) {
+              onItemTypeFilterChanged: (types) {
                 setState(() {
-                  _showOnlyGoalReached = goalOnly;
+                  _selectedItemTypes = types;
                 });
               },
+              onGoalSelectionChanged: (selection) {
+                setState(() {
+                  _goalSelection = selection;
+                });
+              },
+              onUsageSelectionChanged: (selection) {
+                setState(() {
+                  _usageSelection = selection;
+                });
+              },
+              onPriceFilterChanged: (minP, maxP) {
+                setState(() {
+                  _minPriceFilter = minP;
+                  _maxPriceFilter = maxP;
+                });
+              },
+              onApplySorting: (opt, dir) {
+                setState(() {
+                  _sortOption = opt;
+                  _sortDirection = dir;
+                });
+              },
+              onToggleFilter: () {
+                setState(() {
+                  _isFilterExpanded = !_isFilterExpanded;
+                });
+              },
+              onResetFilters: _resetFilters,
+              onOpenSettings: _openSettings,
               onEditItem: _openEditDialog,
               onDeleteItem: _deleteItem,
               onUpdateMonthlyStatus: _updateMonthlyStatus,
               onReorderItems: _reorderItems,
+              onSidePanelWidthChanged: (width) {
+                setState(() {
+                  _sidePanelWidth = width;
+                });
+              },
             ),
 
             // TAB 1: Monthly Review View
@@ -667,6 +728,7 @@ class _HomeScreenState extends State<HomeScreen> {
               currency: _currency,
               onReviewItem: _handleReviewItem,
               onResetAllReviews: _resetAllReviews,
+              onOpenSettings: _openSettings,
             ),
 
             // TAB 2: Statistics View
@@ -685,6 +747,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         pendingReviewCount: pendingCount,
+        leftMargin: sidePanelOffset,
       ),
       floatingActionButton: _currentTabIndex == 0
           ? FloatingActionButton.extended(
@@ -694,5 +757,6 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : null,
     );
+    return mainAppScaffold;
   }
 }

@@ -143,6 +143,7 @@ class ReviewView extends StatefulWidget {
   final Currency currency;
   final Function(Item item, bool used) onReviewItem;
   final VoidCallback onResetAllReviews;
+  final VoidCallback? onOpenSettings;
 
   const ReviewView({
     super.key,
@@ -150,6 +151,7 @@ class ReviewView extends StatefulWidget {
     this.currency = Currency.euro,
     required this.onReviewItem,
     required this.onResetAllReviews,
+    this.onOpenSettings,
   });
 
   @override
@@ -288,56 +290,71 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
     const darkSlateBlue = Color(0xFF252D3C);
 
     if (pending.isEmpty) {
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: fireOrange.withValues(alpha: isDarkMode ? 0.2 : 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.local_fire_department,
-                  size: 64,
-                  color: fireOrange,
+      return Column(
+        children: [
+          if (widget.onOpenSettings != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, right: 16),
+              child: Align(
+                alignment: Alignment.topRight,
+                child: IconButton.filledTonal(
+                  tooltip: 'Settings',
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: widget.onOpenSettings,
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              Text(
-                'All caught up for this month! 🎉',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+            ),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: fireOrange.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.local_fire_department,
+                        size: 64,
+                        color: fireOrange,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'All caught up for this month! 🎉',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const ReviewCountdownBanner(),
+                    const SizedBox(height: 12),
+                    Text(
+                      'You have reviewed all your items for the current month (${Item.currentMonthKey}).\nYour review list will reset next month automatically.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    OutlinedButton.icon(
+                      onPressed: widget.onResetAllReviews,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text("Reset This Month's Reviews"),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              const ReviewCountdownBanner(),
-              const SizedBox(height: 12),
-              Text(
-                'You have reviewed all your items for the current month (${Item.currentMonthKey}).\nYour review list will reset next month automatically.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: widget.onResetAllReviews,
-                icon: const Icon(Icons.refresh),
-                label: const Text("Reset This Month's Reviews"),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       );
     }
 
@@ -366,11 +383,12 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
             children: [
               Expanded(
                 child: Text(
-                  '${Item.currentMonthKey} Usage Review',
+                  'Monthly Usage Review',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
                 ),
               ),
@@ -392,14 +410,14 @@ class _ReviewViewState extends State<ReviewView> with SingleTickerProviderStateM
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 15),
           ReviewCountdownText(
             style: theme.textTheme.bodySmall?.copyWith(
               color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
           // Swipe Card Stack Area
           Expanded(
