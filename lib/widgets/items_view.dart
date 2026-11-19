@@ -18,6 +18,11 @@ enum SortDirection {
   ascending,
   descending,
 }
+const _segmentStyle = ButtonStyle(
+  visualDensity: VisualDensity.compact,
+  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12)),
+);
 
 class ItemsView extends StatefulWidget {
   final List<Item> items;
@@ -25,8 +30,8 @@ class ItemsView extends StatefulWidget {
   final String searchQuery;
   final Set<String> selectedCategoryIds;
   final Set<ItemType> selectedItemTypes;
-  final bool showOnlyGoalReached;
-  final bool showOnlyCurrentlyUsed;
+  final Set<bool> goalSelection; // {} = both, {true} = reached, {false} = not reached
+  final Set<MonthlyReviewStatus> usageSelection; // {} = all
   final double maxItemPrice;
   final double? minPriceFilter;
   final double? maxPriceFilter;
@@ -38,8 +43,8 @@ class ItemsView extends StatefulWidget {
   final ValueChanged<String> onSearchQueryChanged;
   final ValueChanged<Set<String>> onCategoryFilterChanged;
   final ValueChanged<Set<ItemType>> onItemTypeFilterChanged;
-  final ValueChanged<bool> onGoalFilterChanged;
-  final ValueChanged<bool> onCurrentlyUsedFilterChanged;
+  final ValueChanged<Set<bool>> onGoalSelectionChanged;
+  final ValueChanged<Set<MonthlyReviewStatus>> onUsageSelectionChanged;
   final Function(double? minP, double? maxP) onPriceFilterChanged;
   final Function(SortOption option, SortDirection direction) onApplySorting;
   final VoidCallback onToggleFilter;
@@ -58,8 +63,8 @@ class ItemsView extends StatefulWidget {
     required this.searchQuery,
     required this.selectedCategoryIds,
     required this.selectedItemTypes,
-    required this.showOnlyGoalReached,
-    required this.showOnlyCurrentlyUsed,
+    required this.goalSelection,
+    required this.usageSelection,
     required this.maxItemPrice,
     required this.minPriceFilter,
     required this.maxPriceFilter,
@@ -71,8 +76,8 @@ class ItemsView extends StatefulWidget {
     required this.onSearchQueryChanged,
     required this.onCategoryFilterChanged,
     required this.onItemTypeFilterChanged,
-    required this.onGoalFilterChanged,
-    required this.onCurrentlyUsedFilterChanged,
+    required this.onGoalSelectionChanged,
+    required this.onUsageSelectionChanged,
     required this.onPriceFilterChanged,
     required this.onApplySorting,
     required this.onToggleFilter,
@@ -96,7 +101,7 @@ class _ItemsViewState extends State<ItemsView> {
 
   late FocusNode _searchFocusNode;
 
-  // Sorting local state (applied when 'Apply' is tapped)
+  // Sorting local state (applied when 'Reorder' is tapped)
   late SortOption _tempSortOption;
   late SortDirection _tempSortDirection;
 
@@ -243,15 +248,18 @@ class _ItemsViewState extends State<ItemsView> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  noCategorySelected
-                      ? 'All Categories (Default)'
-                      : '${widget.selectedCategoryIds.length} selected',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: noCategorySelected
-                        ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
-                        : theme.colorScheme.primary,
-                    fontWeight: noCategorySelected ? FontWeight.normal : FontWeight.bold,
+                Flexible(
+                  child: Text(
+                    noCategorySelected
+                        ? 'All Categories (Default)'
+                        : '${widget.selectedCategoryIds.length} selected',
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: noCategorySelected
+                          ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
+                          : theme.colorScheme.primary,
+                      fontWeight: noCategorySelected ? FontWeight.normal : FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -413,9 +421,6 @@ class _ItemsViewState extends State<ItemsView> {
 
       // SUBMENU 2: STATUS
       case 2:
-        final isSingleExplicit = widget.selectedItemTypes.contains(ItemType.singlePurchase);
-        final isSubscriptionExplicit = widget.selectedItemTypes.contains(ItemType.subscription);
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -427,62 +432,88 @@ class _ItemsViewState extends State<ItemsView> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 6),
-            CheckboxListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              title: const Text('Subscription Only', style: TextStyle(fontSize: 13)),
-              secondary: const Icon(Icons.autorenew, size: 18),
-              value: isSubscriptionExplicit,
-              onChanged: (val) {
-                final newSet = Set<ItemType>.from(widget.selectedItemTypes);
-                if (val == true) {
-                  newSet.add(ItemType.subscription);
-                } else {
-                  newSet.remove(ItemType.subscription);
-                }
-                widget.onItemTypeFilterChanged(newSet);
-              },
+            const SizedBox(height: 16),
+
+            // Type
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<ItemType>(
+                multiSelectionEnabled: true,
+                emptySelectionAllowed: true,
+                showSelectedIcon: false,
+                style: _segmentStyle,
+                segments: const [
+                  ButtonSegment(
+                    value: ItemType.subscription,
+                    icon: Icon(Icons.autorenew, size: 16),
+                    label: Text('Subscription'),
+                  ),
+                  ButtonSegment(
+                    value: ItemType.singlePurchase,
+                    icon: Icon(Icons.shopping_bag_outlined, size: 16),
+                    label: Text('Single Purchase'),
+                  ),
+                ],
+                selected: widget.selectedItemTypes,
+                onSelectionChanged: widget.onItemTypeFilterChanged,
+              ),
             ),
-            CheckboxListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              title: const Text('Single Purchase Only', style: TextStyle(fontSize: 13)),
-              secondary: const Icon(Icons.shopping_bag_outlined, size: 18),
-              value: isSingleExplicit,
-              onChanged: (val) {
-                final newSet = Set<ItemType>.from(widget.selectedItemTypes);
-                if (val == true) {
-                  newSet.add(ItemType.singlePurchase);
-                } else {
-                  newSet.remove(ItemType.singlePurchase);
-                }
-                widget.onItemTypeFilterChanged(newSet);
-              },
+            const SizedBox(height: 10),
+
+            // Usage
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<MonthlyReviewStatus>(
+                multiSelectionEnabled: true,
+                emptySelectionAllowed: true,
+                showSelectedIcon: false,
+                style: _segmentStyle,
+                segments: const [
+                  ButtonSegment(
+                    value: MonthlyReviewStatus.used,
+                    icon: Icon(Icons.local_fire_department, size: 16),
+                    label: Text('Used'),
+                  ),
+                  ButtonSegment(
+                    value: MonthlyReviewStatus.notUsed,
+                    icon: Icon(Icons.block, size: 16),
+                    label: Text('Not used'),
+                  ),
+                  ButtonSegment(
+                    value: MonthlyReviewStatus.pending,
+                    icon: Icon(Icons.pending_outlined, size: 16),
+                    label: Text('Review'),
+                  ),
+                ],
+                selected: widget.usageSelection,
+                onSelectionChanged: widget.onUsageSelectionChanged,
+              ),
             ),
-            CheckboxListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              title: const Text('Currently Used Only', style: TextStyle(fontSize: 13)),
-              secondary: const Icon(Icons.local_fire_department, size: 18),
-              value: widget.showOnlyCurrentlyUsed,
-              onChanged: (val) {
-                widget.onCurrentlyUsedFilterChanged(val ?? false);
-              },
-            ),
-            CheckboxListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              title: const Text('Goal Reached Only', style: TextStyle(fontSize: 13)),
-              secondary: const Icon(Icons.check_circle_outline, size: 18),
-              value: widget.showOnlyGoalReached,
-              onChanged: (val) {
-                widget.onGoalFilterChanged(val ?? false);
-              },
+            const SizedBox(height: 10),
+
+            // Goal
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                multiSelectionEnabled: true,
+                emptySelectionAllowed: true,
+                showSelectedIcon: false,
+                style: _segmentStyle,
+                segments: const [
+                  ButtonSegment<bool>(
+                    value: true,
+                    icon: Icon(Icons.check_circle_outline, size: 16),
+                    label: Text('Reached'),
+                  ),
+                  ButtonSegment<bool>(
+                    value: false,
+                    icon: Icon(Icons.cancel_outlined, size: 16),
+                    label: Text('Not reached'),
+                  ),
+                ],
+                selected: widget.goalSelection,
+                onSelectionChanged: widget.onGoalSelectionChanged,
+              ),
             ),
           ],
         );
@@ -541,10 +572,12 @@ class _ItemsViewState extends State<ItemsView> {
             ),
             const SizedBox(height: 8),
             // View mode toggle
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 const Text('Card Layout:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
                 SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment(value: false, label: Text('Detailed')),
@@ -560,59 +593,73 @@ class _ItemsViewState extends State<ItemsView> {
               ],
             ),
             const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 8),
             // Sort by
-            Row(
-              children: [
-                const Text('Sort By:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButton<SortOption>(
-                    value: _tempSortOption,
-                    isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(value: SortOption.defaultOrder, child: Text('Default Order')),
-                      DropdownMenuItem(value: SortOption.alphabetical, child: Text('Alphabetically')),
-                      DropdownMenuItem(value: SortOption.cost, child: Text('Cost / Price')),
-                      DropdownMenuItem(value: SortOption.usageStreak, child: Text('Usage Streak')),
-                    ],
-                    onChanged: (opt) {
-                      if (opt != null) {
-                        setState(() {
-                          _tempSortOption = opt;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            // Sort direction
-            Row(
-              children: [
-                const Text('Direction:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
-                SegmentedButton<SortDirection>(
-                  segments: const [
-                    ButtonSegment(value: SortDirection.ascending, icon: Icon(Icons.arrow_upward, size: 16), label: Text('Asc')),
-                    ButtonSegment(value: SortDirection.descending, icon: Icon(Icons.arrow_downward, size: 16), label: Text('Desc')),
+            Card.outlined(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Sort by
+                    Row(
+                      children: [
+                        const Text('Sort By:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButton<SortOption>(
+                            value: _tempSortOption,
+                            isExpanded: true,
+                            items: const [
+                              DropdownMenuItem(value: SortOption.defaultOrder, child: Text('Default Order')),
+                              DropdownMenuItem(value: SortOption.alphabetical, child: Text('Alphabetically')),
+                              DropdownMenuItem(value: SortOption.cost, child: Text('Cost / Price')),
+                              DropdownMenuItem(value: SortOption.usageStreak, child: Text('Usage Streak')),
+                            ],
+                            onChanged: (opt) {
+                              if (opt != null) setState(() => _tempSortOption = opt);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Direction (wraps on small screens)
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        const Text('Direction:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        SegmentedButton<SortDirection>(
+                          segments: const [
+                            ButtonSegment(value: SortDirection.ascending, icon: Icon(Icons.arrow_upward, size: 16), label: Text('Asc')),
+                            ButtonSegment(value: SortDirection.descending, icon: Icon(Icons.arrow_downward, size: 16), label: Text('Desc')),
+                          ],
+                          selected: {_tempSortDirection},
+                          onSelectionChanged: (selection) {
+                            setState(() => _tempSortDirection = selection.first);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Apply button, always on the right
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: () => widget.onApplySorting(_tempSortOption, _tempSortDirection),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('Reorder'),
+                      ),
+                    ),
                   ],
-                  selected: {_tempSortDirection},
-                  onSelectionChanged: (selection) {
-                    setState(() {
-                      _tempSortDirection = selection.first;
-                    });
-                  },
                 ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () {
-                    widget.onApplySorting(_tempSortOption, _tempSortDirection);
-                  },
-                  icon: const Icon(Icons.check, size: 16),
-                  label: const Text('Apply'),
-                ),
-              ],
+              ),
             ),
           ],
         );
@@ -634,7 +681,7 @@ class _ItemsViewState extends State<ItemsView> {
       ),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -784,10 +831,13 @@ class _ItemsViewState extends State<ItemsView> {
     final isPriceFiltered = (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
         (widget.maxPriceFilter != null && widget.maxPriceFilter! < (maxLimit - 0.01));
 
-    final activeFilterCount = (widget.showOnlyGoalReached ? 1 : 0) +
-        (widget.showOnlyCurrentlyUsed ? 1 : 0) +
+    final activeFilterCount = (widget.goalSelection.length == 1 ? 1 : 0) +
+        (widget.usageSelection.isNotEmpty &&
+            widget.usageSelection.length < MonthlyReviewStatus.values.length
+            ? 1
+            : 0) +
         widget.selectedCategoryIds.length +
-        widget.selectedItemTypes.length +
+        (widget.selectedItemTypes.length == 1 ? 1 : 0) +
         (widget.searchQuery.isNotEmpty ? 1 : 0) +
         (isPriceFiltered ? 1 : 0);
 
@@ -936,55 +986,58 @@ class _ItemsViewState extends State<ItemsView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // 5 Submenu Icon Tabs Row
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.category_outlined,
-                            color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.category_outlined,
+                              color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
+                            ),
+                            tooltip: 'Categories',
+                            onPressed: () => setState(() => _activeSubmenuIndex = 0),
                           ),
-                          tooltip: 'Categories',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 0),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.monetization_on_outlined,
-                            color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
+                          IconButton(
+                            icon: Icon(
+                              Icons.monetization_on_outlined,
+                              color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
+                            ),
+                            tooltip: 'Price Range',
+                            onPressed: () => setState(() => _activeSubmenuIndex = 1),
                           ),
-                          tooltip: 'Price Range',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 1),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.check_circle_outline,
-                            color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
+                          IconButton(
+                            icon: Icon(
+                              Icons.check_circle_outline,
+                              color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
+                            ),
+                            tooltip: 'Status & Type',
+                            onPressed: () => setState(() => _activeSubmenuIndex = 2),
                           ),
-                          tooltip: 'Status & Type',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 2),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.search,
-                            color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
+                          IconButton(
+                            icon: Icon(
+                              Icons.search,
+                              color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
+                            ),
+                            tooltip: 'Search',
+                            onPressed: () => setState(() => _activeSubmenuIndex = 3),
                           ),
-                          tooltip: 'Search',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 3),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.tune,
-                            color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
+                          IconButton(
+                            icon: Icon(
+                              Icons.tune,
+                              color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
+                            ),
+                            tooltip: 'Display & Sort',
+                            onPressed: () => setState(() => _activeSubmenuIndex = 4),
                           ),
-                          tooltip: 'Display & Sort',
-                          onPressed: () => setState(() => _activeSubmenuIndex = 4),
-                        ),
-                        const Spacer(),
-                        if (activeFilterCount > 0)
-                          TextButton(
-                            onPressed: widget.onResetFilters,
-                            child: const Text('Clear All', style: TextStyle(fontSize: 12)),
-                          ),
-                      ],
+                          const SizedBox(width: 12),
+                          if (activeFilterCount > 0)
+                            TextButton(
+                              onPressed: widget.onResetFilters,
+                              child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                            ),
+                        ],
+                      ),
                     ),
                     const Divider(height: 12),
                     _buildSubmenuPanel(context, theme, isDarkMode),

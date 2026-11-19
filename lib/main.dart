@@ -277,8 +277,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   Set<String> _selectedCategoryIds = {};
   Set<ItemType> _selectedItemTypes = {};
-  bool _showOnlyGoalReached = false;
-  bool _showOnlyCurrentlyUsed = false;
+  Set<bool> _goalSelection = {};
+  Set<MonthlyReviewStatus> _usageSelection = {};
   double? _minPriceFilter;
   double? _maxPriceFilter;
   SortOption _sortOption = SortOption.defaultOrder;
@@ -300,8 +300,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedCategoryIds.contains(item.category.id);
       final matchesItemType = _selectedItemTypes.isEmpty ||
           _selectedItemTypes.contains(item.itemType);
-      final matchesGoalFilter = !_showOnlyGoalReached || item.isGoalReached;
-      final matchesCurrentlyUsed = !_showOnlyCurrentlyUsed || item.isCurrentlyUsed;
+      final matchesGoalFilter =
+          _goalSelection.length != 1 || _goalSelection.contains(item.isGoalReached);
+      final matchesUsage = _usageSelection.isEmpty ||
+          _usageSelection.contains(item.currentMonthlyStatus);
 
       final minP = _minPriceFilter ?? 0.0;
       final maxPFilter = _maxPriceFilter ?? maxP;
@@ -311,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
           matchesCategory &&
           matchesItemType &&
           matchesGoalFilter &&
-          matchesCurrentlyUsed &&
+          matchesUsage &&
           matchesPrice;
     }).toList();
 
@@ -348,8 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchQuery = '';
       _selectedCategoryIds = {};
       _selectedItemTypes = {};
-      _showOnlyGoalReached = false;
-      _showOnlyCurrentlyUsed = false;
+      _goalSelection = {};
+      _usageSelection = {};
       _minPriceFilter = null;
       _maxPriceFilter = null;
       _sortOption = SortOption.defaultOrder;
@@ -655,8 +657,8 @@ class _HomeScreenState extends State<HomeScreen> {
               searchQuery: _searchQuery,
               selectedCategoryIds: _selectedCategoryIds,
               selectedItemTypes: _selectedItemTypes,
-              showOnlyGoalReached: _showOnlyGoalReached,
-              showOnlyCurrentlyUsed: _showOnlyCurrentlyUsed,
+              goalSelection: _goalSelection,
+              usageSelection: _usageSelection,
               maxItemPrice: _maxItemPrice,
               minPriceFilter: _minPriceFilter,
               maxPriceFilter: _maxPriceFilter,
@@ -680,14 +682,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   _selectedItemTypes = types;
                 });
               },
-              onGoalFilterChanged: (goalOnly) {
+              onGoalSelectionChanged: (selection) {
                 setState(() {
-                  _showOnlyGoalReached = goalOnly;
+                  _goalSelection = selection;
                 });
               },
-              onCurrentlyUsedFilterChanged: (currentlyUsedOnly) {
+              onUsageSelectionChanged: (selection) {
                 setState(() {
-                  _showOnlyCurrentlyUsed = currentlyUsedOnly;
+                  _usageSelection = selection;
                 });
               },
               onPriceFilterChanged: (minP, maxP) {
