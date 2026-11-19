@@ -831,18 +831,37 @@ class _ItemsViewState extends State<ItemsView> {
     final isPriceFiltered = (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
         (widget.maxPriceFilter != null && widget.maxPriceFilter! < (maxLimit - 0.01));
 
-    final activeFilterCount = (widget.goalSelection.length == 1 ? 1 : 0) +
-        (widget.usageSelection.isNotEmpty &&
-            widget.usageSelection.length < MonthlyReviewStatus.values.length
-            ? 1
-            : 0) +
-        widget.selectedCategoryIds.length +
-        (widget.selectedItemTypes.length == 1 ? 1 : 0) +
-        (widget.searchQuery.isNotEmpty ? 1 : 0) +
-        (isPriceFiltered ? 1 : 0);
+    final isGoalActive = widget.goalSelection.length == 1;
+    final isUsageActive = widget.usageSelection.isNotEmpty &&
+        widget.usageSelection.length < MonthlyReviewStatus.values.length;
+    final isTypeActive = widget.selectedItemTypes.length == 1;
+
+    final categoriesCount = widget.selectedCategoryIds.length;
+    final priceCount = isPriceFiltered ? 1 : 0;
+    final statusCount =
+        (isGoalActive ? 1 : 0) + (isUsageActive ? 1 : 0) + (isTypeActive ? 1 : 0);
+    final searchCount = widget.searchQuery.isNotEmpty ? 1 : 0;
+
+    final activeFilterCount =
+        categoriesCount + priceCount + statusCount + searchCount;
 
     final isWideScreen = MediaQuery.of(context).size.width >= 900;
 
+    Widget buildTab(int index, IconData icon, String tooltip, int count) {
+      return IconButton(
+        tooltip: tooltip,
+        icon: Badge(
+          smallSize: 8,
+          isLabelVisible: count > 0,
+          label: Text('$count'),
+          child: Icon(
+            icon,
+            color: _activeSubmenuIndex == index ? theme.colorScheme.primary : null,
+          ),
+        ),
+        onPressed: () => setState(() => _activeSubmenuIndex = index),
+      );
+    }
     // Floating action buttons row (Filter left, Settings right) with NO bar background behind them
     Widget buildFloatingButtonsRow() {
       return Padding(
@@ -861,7 +880,8 @@ class _ItemsViewState extends State<ItemsView> {
                     ? 'Filters ($activeFilterCount active)'
                     : 'Filter & View Controls',
                 icon: Badge(
-                  isLabelVisible: activeFilterCount > 0,
+                  isLabelVisible:
+                  activeFilterCount > 0 && (!widget.isFilterExpanded || isWideScreen),
                   label: Text('$activeFilterCount'),
                   child: Icon(
                     widget.isFilterExpanded ? Icons.filter_list_off : Icons.filter_list,
@@ -990,46 +1010,11 @@ class _ItemsViewState extends State<ItemsView> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.category_outlined,
-                              color: _activeSubmenuIndex == 0 ? theme.colorScheme.primary : null,
-                            ),
-                            tooltip: 'Categories',
-                            onPressed: () => setState(() => _activeSubmenuIndex = 0),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.monetization_on_outlined,
-                              color: _activeSubmenuIndex == 1 ? theme.colorScheme.primary : null,
-                            ),
-                            tooltip: 'Price Range',
-                            onPressed: () => setState(() => _activeSubmenuIndex = 1),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.check_circle_outline,
-                              color: _activeSubmenuIndex == 2 ? theme.colorScheme.primary : null,
-                            ),
-                            tooltip: 'Status & Type',
-                            onPressed: () => setState(() => _activeSubmenuIndex = 2),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.search,
-                              color: _activeSubmenuIndex == 3 ? theme.colorScheme.primary : null,
-                            ),
-                            tooltip: 'Search',
-                            onPressed: () => setState(() => _activeSubmenuIndex = 3),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.tune,
-                              color: _activeSubmenuIndex == 4 ? theme.colorScheme.primary : null,
-                            ),
-                            tooltip: 'Display & Sort',
-                            onPressed: () => setState(() => _activeSubmenuIndex = 4),
-                          ),
+                          buildTab(0, Icons.category_outlined, 'Categories', categoriesCount),
+                          buildTab(1, Icons.monetization_on_outlined, 'Price Range', priceCount),
+                          buildTab(2, Icons.check_circle_outline, 'Status & Type', statusCount),
+                          buildTab(3, Icons.search, 'Search', searchCount),
+                          buildTab(4, Icons.tune, 'Display & Sort', 0),
                           const SizedBox(width: 12),
                           if (activeFilterCount > 0)
                             TextButton(
