@@ -90,6 +90,7 @@ class ItemsView extends StatefulWidget {
 class _ItemsViewState extends State<ItemsView> {
   bool _isCompactView = false;
   int _activeSubmenuIndex = 0; // 0: Categories, 1: Price, 2: Status, 3: Search, 4: Display/Reorder
+  double _sidePanelWidth = 310.0;
 
   late FocusNode _searchFocusNode;
 
@@ -215,14 +216,15 @@ class _ItemsViewState extends State<ItemsView> {
     );
   }
 
-  Widget _buildSubmenuPanel(BuildContext context, ThemeData theme, bool isDarkMode) {
+  Widget _buildSubmenuPanel(BuildContext context, ThemeData theme, bool isDarkMode, {int? indexOverride}) {
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     final currentMin = (widget.minPriceFilter ?? 0.0).clamp(0.0, maxLimit);
     final currentMax = (widget.maxPriceFilter ?? maxLimit).clamp(currentMin, maxLimit);
 
     final noCategorySelected = widget.selectedCategoryIds.isEmpty;
+    final targetIndex = indexOverride ?? _activeSubmenuIndex;
 
-    switch (_activeSubmenuIndex) {
+    switch (targetIndex) {
       // SUBMENU 0: CATEGORIES
       case 0:
         return Column(
@@ -618,6 +620,59 @@ class _ItemsViewState extends State<ItemsView> {
     }
   }
 
+  Widget _buildWideSidePanel(BuildContext context, ThemeData theme, bool isDarkMode, int activeFilterCount) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF1E2634) : theme.colorScheme.surface,
+        border: Border(
+          right: BorderSide(
+            color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 3), // Search
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+
+              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 0), // Categories
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+
+              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 1), // Price Range
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+
+              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 2), // Status & Type
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+
+              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 4), // Display & Sorting
+
+              if (activeFilterCount > 0) ...[
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: widget.onResetFilters,
+                  icon: const Icon(Icons.restart_alt, size: 16),
+                  label: const Text('Reset All Filters'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(ThemeData theme, int activeFilterCount) {
     return Center(
       child: SingleChildScrollView(
@@ -781,20 +836,71 @@ class _ItemsViewState extends State<ItemsView> {
       );
     }
 
-    // WIDE SCREEN LAYOUT: Floating Buttons Directly Above Items Grid; Side Panel on Left via HomeScreen
+    // WIDE SCREEN LAYOUT: Side Panel on Left + Resizer Hinge + Items Grid on Right
     if (isWideScreen) {
-      return Stack(
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned.fill(
-            child: widget.items.isEmpty
-                ? _buildEmptyState(theme, activeFilterCount)
-                : _buildItemsListOrGrid(56.0),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: buildFloatingButtonsRow(),
+          if (widget.isFilterExpanded) ...[
+            SizedBox(
+              width: _sidePanelWidth.clamp(
+                220.0,
+                (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0),
+              ),
+              child: _buildWideSidePanel(context, theme, isDarkMode, activeFilterCount),
+            ),
+            MouseRegion(
+              cursor: SystemMouseCursors.resizeLeftRight,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragUpdate: (details) {
+                  final maxW = (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0);
+                  setState(() {
+                    _sidePanelWidth = (_sidePanelWidth + details.delta.dx).clamp(220.0, maxW);
+                  });
+                },
+                child: Container(
+                  width: 14,
+                  color: Colors.transparent,
+                  child: Center(
+                    child: Container(
+                      width: 4,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? const Color(0xFF3B485E)
+                            : theme.colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.drag_indicator,
+                          size: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: widget.items.isEmpty
+                      ? _buildEmptyState(theme, activeFilterCount)
+                      : _buildItemsListOrGrid(56.0),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: buildFloatingButtonsRow(),
+                ),
+              ],
+            ),
           ),
         ],
       );
