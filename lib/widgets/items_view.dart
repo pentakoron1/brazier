@@ -172,7 +172,62 @@ class _ItemsViewState extends State<ItemsView> {
                 widget.onUpdateMonthlyStatus(item, newStatus),
           );
   }
+  Widget _buildCategoryButton(ThemeData theme, bool isDarkMode, Category cat) {
+    final noneSelected = widget.selectedCategoryIds.isEmpty;
+    final isSelected = widget.selectedCategoryIds.contains(cat.id);
 
+    final grey = isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600;
+    final onCatColor =
+    ThemeData.estimateBrightnessForColor(cat.color) == Brightness.dark
+        ? Colors.white
+        : Colors.black87;
+
+    final Color background = isSelected
+        ? cat.color
+        : (isDarkMode
+        ? const Color(0xFF28303F)
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6));
+
+    // none selected -> colored icon, selected -> everything colored, otherwise gray
+    final Color iconColor = isSelected ? onCatColor : (noneSelected ? cat.color : grey);
+    final Color textColor =
+    isSelected ? onCatColor : (noneSelected ? theme.colorScheme.onSurface : grey);
+
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          final newSet = Set<String>.from(widget.selectedCategoryIds);
+          if (isSelected) {
+            newSet.remove(cat.id);
+          } else {
+            newSet.add(cat.id);
+          }
+          widget.onCategoryFilterChanged(newSet);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(cat.icon, size: 14, color: iconColor),
+              const SizedBox(width: 6),
+              Text(
+                cat.displayName,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   Widget _buildReorderableGridItem(int index, int crossAxisCount, double tileWidth) {
     final item = widget.items[index];
     final theme = Theme.of(context);
@@ -265,66 +320,16 @@ class _ItemsViewState extends State<ItemsView> {
               ],
             ),
             const SizedBox(height: 6),
+            const SizedBox(height: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 180),
               child: SingleChildScrollView(
-                child: Column(
-                  children: widget.categories.map((cat) {
-                    final isExplicitlySelected = widget.selectedCategoryIds.contains(cat.id);
-                    final isChecked = noCategorySelected || isExplicitlySelected;
-                    final isGrayCheck = noCategorySelected;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: CheckboxListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        tileColor: isExplicitlySelected
-                            ? (isDarkMode
-                                ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                                : theme.colorScheme.primaryContainer.withValues(alpha: 0.4))
-                            : (isDarkMode
-                                ? const Color(0xFF1E2634)
-                                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
-                        title: Text(
-                          cat.displayName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isExplicitlySelected ? FontWeight.bold : FontWeight.normal,
-                            color: isGrayCheck ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700) : null,
-                          ),
-                        ),
-                        secondary: CircleAvatar(
-                          radius: 14,
-                          backgroundColor: cat.color.withValues(alpha: isDarkMode ? 0.25 : 0.15),
-                          child: Icon(cat.icon, size: 14, color: cat.color),
-                        ),
-                        activeColor: isGrayCheck
-                            ? (isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400)
-                            : theme.colorScheme.primary,
-                        checkColor: isGrayCheck
-                            ? (isDarkMode ? Colors.grey.shade900 : Colors.white)
-                            : theme.colorScheme.onPrimary,
-                        value: isChecked,
-                        onChanged: (val) {
-                          final newSet = Set<String>.from(widget.selectedCategoryIds);
-                          if (noCategorySelected) {
-                            newSet.add(cat.id);
-                          } else {
-                            if (val == true) {
-                              newSet.add(cat.id);
-                            } else {
-                              newSet.remove(cat.id);
-                            }
-                          }
-                          widget.onCategoryFilterChanged(newSet);
-                        },
-                      ),
-                    );
-                  }).toList(),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: widget.categories
+                      .map((cat) => _buildCategoryButton(theme, isDarkMode, cat))
+                      .toList(),
                 ),
               ),
             ),
@@ -593,8 +598,6 @@ class _ItemsViewState extends State<ItemsView> {
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
             // Sort by
             Card.outlined(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
