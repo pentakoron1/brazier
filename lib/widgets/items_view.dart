@@ -583,17 +583,28 @@ class _ItemsViewState extends State<ItemsView> {
               runSpacing: 8,
               children: [
                 const Text('Card Layout:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('Detailed')),
-                    ButtonSegment(value: true, label: Text('Compact')),
-                  ],
-                  selected: {_isCompactView},
-                  onSelectionChanged: (selection) {
-                    setState(() {
-                      _isCompactView = selection.first;
-                    });
-                  },
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.dns, size: 16),
+                        label: Text('Detailed'),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.reorder, size: 16),
+                        label: Text('Compact'),
+                      ),
+                    ],
+                    selected: {_isCompactView},
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _isCompactView = selection.first;
+                      });
+                    },
+                  ),
                 ),
               ],
             ),
