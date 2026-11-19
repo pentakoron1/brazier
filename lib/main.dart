@@ -174,6 +174,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
+  double _sidePanelWidth = 310.0;
 
   // Display preferences
   bool _showSegmentedProgressBar = true;
@@ -634,6 +635,11 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final isWideScreen = MediaQuery.of(context).size.width >= 900;
+    final sidePanelOffset = (isWideScreen && _isFilterExpanded && _currentTabIndex == 0)
+        ? _sidePanelWidth + 14.0 // 14.0 px accounts for the resize drag bar
+        : 0.0;
+
     Widget mainAppScaffold = Scaffold(
       extendBody: true,
       appBar: null,
@@ -707,6 +713,11 @@ class _HomeScreenState extends State<HomeScreen> {
               onDeleteItem: _deleteItem,
               onUpdateMonthlyStatus: _updateMonthlyStatus,
               onReorderItems: _reorderItems,
+              onSidePanelWidthChanged: (width) {
+                setState(() {
+                  _sidePanelWidth = width;
+                });
+              },
             ),
 
             // TAB 1: Monthly Review View
@@ -734,6 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         pendingReviewCount: pendingCount,
+        leftMargin: sidePanelOffset,
       ),
       floatingActionButton: _currentTabIndex == 0
           ? FloatingActionButton.extended(

@@ -49,6 +49,7 @@ class ItemsView extends StatefulWidget {
   final ValueChanged<String> onDeleteItem;
   final Function(Item item, MonthlyReviewStatus status) onUpdateMonthlyStatus;
   final ReorderCallback onReorderItems;
+  final ValueChanged<double>? onSidePanelWidthChanged;
 
   const ItemsView({
     super.key,
@@ -81,6 +82,7 @@ class ItemsView extends StatefulWidget {
     required this.onDeleteItem,
     required this.onUpdateMonthlyStatus,
     required this.onReorderItems,
+    this.onSidePanelWidthChanged,
   });
 
   @override
@@ -855,9 +857,11 @@ class _ItemsViewState extends State<ItemsView> {
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragUpdate: (details) {
                   final maxW = (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0);
+                  final newWidth = (_sidePanelWidth + details.delta.dx).clamp(220.0, maxW);
                   setState(() {
-                    _sidePanelWidth = (_sidePanelWidth + details.delta.dx).clamp(220.0, maxW);
+                    _sidePanelWidth = newWidth;
                   });
+                  widget.onSidePanelWidthChanged?.call(newWidth);
                 },
                 child: Container(
                   width: 14,

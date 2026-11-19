@@ -4,20 +4,23 @@ class FloatingNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final int pendingReviewCount;
+  final double leftMargin;
 
   const FloatingNavBar({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
     this.pendingReviewCount = 0,
+    this.leftMargin = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
 
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 150),
+        padding: EdgeInsets.fromLTRB(16 + leftMargin, 0, 16, 12),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
