@@ -47,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late ThemeMode _themeMode;
   late String _currentLocaleCode;
   late Currency _currency;
+  final _themeMenuKey = GlobalKey<PopupMenuButtonState<ThemeMode>>();
+  final _languageMenuKey = GlobalKey<PopupMenuButtonState<String>>();
 
   final Map<String, String> _supportedLanguages = {
     'system': 'System Default',
@@ -270,7 +272,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? 'Light Theme'
                       : 'Dark Theme',
             ),
+            onTap: () => _themeMenuKey.currentState?.showButtonMenu(),
             trailing: PopupMenuButton<ThemeMode>(
+              key: _themeMenuKey,
               icon: const Icon(Icons.arrow_drop_down),
               onSelected: (mode) {
                 setState(() {
@@ -342,7 +346,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.language_outlined),
             title: const Text('Language'),
             subtitle: Text(_supportedLanguages[_currentLocaleCode] ?? 'System Default'),
+            onTap: () => _languageMenuKey.currentState?.showButtonMenu(),
             trailing: PopupMenuButton<String>(
+              key: _languageMenuKey,
               icon: const Icon(Icons.arrow_drop_down),
               onSelected: (code) {
                 setState(() {
