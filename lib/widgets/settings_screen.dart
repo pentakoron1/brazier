@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../models/currency.dart';
 import '../models/item.dart';
 import '../services/backup_service.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -13,6 +14,12 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<bool> onSegmentedProgressBarChanged;
   final Currency currency;
   final ValueChanged<Currency> onCurrencyChanged;
+  final bool notifyMonthlyReset;
+  final ValueChanged<bool> onNotifyMonthlyResetChanged;
+  final bool notifyUnreviewedItems;
+  final ValueChanged<bool> onNotifyUnreviewedItemsChanged;
+  final String unreviewedReminderFrequency;
+  final ValueChanged<String> onUnreviewedReminderFrequencyChanged;
   final VoidCallback onManageCategories;
   final List<Item> items;
   final List<Category> categories;
@@ -32,6 +39,12 @@ class SettingsScreen extends StatefulWidget {
     required this.onSegmentedProgressBarChanged,
     required this.currency,
     required this.onCurrencyChanged,
+    required this.notifyMonthlyReset,
+    required this.onNotifyMonthlyResetChanged,
+    required this.notifyUnreviewedItems,
+    required this.onNotifyUnreviewedItemsChanged,
+    required this.unreviewedReminderFrequency,
+    required this.onUnreviewedReminderFrequencyChanged,
     required this.onManageCategories,
     required this.items,
     required this.categories,
@@ -47,6 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late ThemeMode _themeMode;
   late String _currentLocaleCode;
   late Currency _currency;
+  late bool _notifyMonthlyReset;
+  late bool _notifyUnreviewedItems;
+  late String _unreviewedReminderFrequency;
   final _themeMenuKey = GlobalKey<PopupMenuButtonState<ThemeMode>>();
   final _languageMenuKey = GlobalKey<PopupMenuButtonState<String>>();
 
@@ -66,6 +82,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _themeMode = widget.themeMode;
     _currentLocaleCode = widget.currentLocaleCode;
     _currency = widget.currency;
+    _notifyMonthlyReset = widget.notifyMonthlyReset;
+    _notifyUnreviewedItems = widget.notifyUnreviewedItems;
+    _unreviewedReminderFrequency = widget.unreviewedReminderFrequency;
   }
 
   void _openCustomCurrencyDialog(BuildContext context, {Currency? initial}) {
@@ -155,6 +174,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         localeCode: _currentLocaleCode,
         showSegmentedProgressBar: _showSegmentedProgressBar,
         currency: _currency,
+        notifyMonthlyReset: _notifyMonthlyReset,
+        notifyUnreviewedItems: _notifyUnreviewedItems,
+        unreviewedReminderFrequency: _unreviewedReminderFrequency,
       ),
     );
   }
@@ -203,6 +225,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
             if (backupData.settings!.currency != null) {
               _currency = backupData.settings!.currency!;
+            }
+            if (backupData.settings!.notifyMonthlyReset != null) {
+              _notifyMonthlyReset = backupData.settings!.notifyMonthlyReset!;
+            }
+            if (backupData.settings!.notifyUnreviewedItems != null) {
+              _notifyUnreviewedItems = backupData.settings!.notifyUnreviewedItems!;
+            }
+            if (backupData.settings!.unreviewedReminderFrequency != null) {
+              _unreviewedReminderFrequency = backupData.settings!.unreviewedReminderFrequency!;
             }
           });
         }
@@ -445,6 +476,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(height: 1),
 
+          // NOTIFICATIONS SECTION
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              'NOTIFICATIONS',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // Monthly Review Reset Checkbox
+          CheckboxListTile(
+            secondary: const Icon(Icons.event_repeat_outlined),
+            title: const Text('Monthly review reset'),
+            subtitle: const Text('Get notified when a new month starts and review resets'),
+            value: _notifyMonthlyReset,
+            onChanged: (value) async {
+              final newValue = value ?? false;
+              if (newValue) {
+                await NotificationService().requestPermissions();
+              }
+              setState(() {
+                _notifyMonthlyReset = newValue;
+              });
+              widget.onNotifyMonthlyResetChanged(newValue);
+            },
+          ),
+
+          // Reminders for Unreviewed Items Checkbox
+          CheckboxListTile(
+            secondary: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Reminders for unreviewed items'),
+            subtitle: const Text('Get reminders to check for unreviewed items'),
+            value: _notifyUnreviewedItems,
+            onChanged: (value) async {
+              final newValue = value ?? false;
+              if (newValue) {
+                await NotificationService().requestPermissions();
+              }
+              setState(() {
+                _notifyUnreviewedItems = newValue;
+              });
+              widget.onNotifyUnreviewedItemsChanged(newValue);
+            },
+          ),
+
+          // Reminder Frequency Dropdown Tile
+          ListTile(
+            enabled: _notifyUnreviewedItems,
+            leading: const Icon(Icons.schedule_outlined),
+            title: const Text('Reminder frequency'),
+            subtitle: Text(
+              _notifyUnreviewedItems
+                  ? 'How often to receive unreviewed item reminders'
+                  : 'Enable unreviewed item reminders to set frequency',
+            ),
+            trailing: DropdownButton<String>(
+              value: _unreviewedReminderFrequency,
+              underline: const SizedBox(),
+              onChanged: _notifyUnreviewedItems
+                  ? (newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _unreviewedReminderFrequency = newValue;
+                        });
+                        widget.onUnreviewedReminderFrequencyChanged(newValue);
+                      }
+                    }
+                  : null,
+              items: const [
+                DropdownMenuItem(
+                  value: 'max_once_per_day',
+                  child: Text('max once per day'),
+                ),
+                DropdownMenuItem(
+                  value: 'max_once_per_week',
+                  child: Text('max once per week'),
+                ),
+                DropdownMenuItem(
+                  value: 'max_once_per_month',
+                  child: Text('max once per month'),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
           // CATEGORIES MANAGEMENT SECTION
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -510,6 +631,9 @@ class _ExportBackupDialog extends StatefulWidget {
   final String localeCode;
   final bool showSegmentedProgressBar;
   final Currency currency;
+  final bool notifyMonthlyReset;
+  final bool notifyUnreviewedItems;
+  final String unreviewedReminderFrequency;
 
   const _ExportBackupDialog({
     required this.items,
@@ -518,6 +642,9 @@ class _ExportBackupDialog extends StatefulWidget {
     required this.localeCode,
     required this.showSegmentedProgressBar,
     required this.currency,
+    required this.notifyMonthlyReset,
+    required this.notifyUnreviewedItems,
+    required this.unreviewedReminderFrequency,
   });
 
   @override
@@ -540,6 +667,9 @@ class _ExportBackupDialogState extends State<_ExportBackupDialog> {
       localeCode: widget.localeCode,
       showSegmentedProgressBar: widget.showSegmentedProgressBar,
       currency: widget.currency,
+      notifyMonthlyReset: widget.notifyMonthlyReset,
+      notifyUnreviewedItems: widget.notifyUnreviewedItems,
+      unreviewedReminderFrequency: widget.unreviewedReminderFrequency,
     );
 
     final fileName = BackupService.generateFileName();

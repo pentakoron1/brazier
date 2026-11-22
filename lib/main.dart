@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'models/currency.dart';
 import 'models/item.dart';
 import 'services/backup_service.dart';
+import 'services/notification_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/category_manager_dialog.dart';
@@ -14,8 +15,9 @@ import 'widgets/review_view.dart';
 import 'widgets/settings_screen.dart';
 import 'widgets/statistics_view.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
   runApp(const BrazierApp());
 }
 
@@ -180,6 +182,11 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showSegmentedProgressBar = true;
   Currency _currency = Currency.euro;
 
+  // Notification preferences
+  bool _notifyMonthlyReset = false;
+  bool _notifyUnreviewedItems = false;
+  String _unreviewedReminderFrequency = 'max_once_per_week';
+
   // Dynamic Categories list initialized with defaults
   List<Category> _categories = Category.defaultCategories;
 
@@ -199,6 +206,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final loadedCurrency = await StorageService.loadCurrency();
     final loadedCategories = await StorageService.loadCategories();
     final loadedItems = await StorageService.loadItems(loadedCategories);
+    final loadedNotifyMonthlyReset = await StorageService.loadNotifyMonthlyReset();
+    final loadedNotifyUnreviewedItems = await StorageService.loadNotifyUnreviewedItems();
+    final loadedUnreviewedReminderFrequency = await StorageService.loadUnreviewedReminderFrequency();
 
     if (!mounted) return;
 
@@ -206,6 +216,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _showSegmentedProgressBar = loadedProgressBar;
       _currency = loadedCurrency;
       _categories = loadedCategories;
+      _notifyMonthlyReset = loadedNotifyMonthlyReset;
+      _notifyUnreviewedItems = loadedNotifyUnreviewedItems;
+      _unreviewedReminderFrequency = loadedUnreviewedReminderFrequency;
 
       if (loadedItems != null) {
         _items = loadedItems;
@@ -272,6 +285,41 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       _isLoading = false;
     });
+
+    _updateNotifications();
+  }
+
+  void _updateNotifications() {
+    NotificationService().updateNotifications(
+      notifyMonthlyReset: _notifyMonthlyReset,
+      notifyUnreviewedItems: _notifyUnreviewedItems,
+      frequency: UnreviewedReminderFrequency.fromCode(_unreviewedReminderFrequency),
+      items: _items,
+    );
+  }
+
+  void _setNotifyMonthlyReset(bool value) {
+    setState(() {
+      _notifyMonthlyReset = value;
+    });
+    StorageService.saveNotifyMonthlyReset(value);
+    _updateNotifications();
+  }
+
+  void _setNotifyUnreviewedItems(bool value) {
+    setState(() {
+      _notifyUnreviewedItems = value;
+    });
+    StorageService.saveNotifyUnreviewedItems(value);
+    _updateNotifications();
+  }
+
+  void _setUnreviewedReminderFrequency(String frequency) {
+    setState(() {
+      _unreviewedReminderFrequency = frequency;
+    });
+    StorageService.saveUnreviewedReminderFrequency(frequency);
+    _updateNotifications();
   }
 
   String _searchQuery = '';
@@ -476,8 +524,22 @@ class _HomeScreenState extends State<HomeScreen> {
           _currency = settings.currency!;
           StorageService.saveCurrency(_currency);
         }
+        if (settings.notifyMonthlyReset != null) {
+          _notifyMonthlyReset = settings.notifyMonthlyReset!;
+          StorageService.saveNotifyMonthlyReset(_notifyMonthlyReset);
+        }
+        if (settings.notifyUnreviewedItems != null) {
+          _notifyUnreviewedItems = settings.notifyUnreviewedItems!;
+          StorageService.saveNotifyUnreviewedItems(_notifyUnreviewedItems);
+        }
+        if (settings.unreviewedReminderFrequency != null) {
+          _unreviewedReminderFrequency = settings.unreviewedReminderFrequency!;
+          StorageService.saveUnreviewedReminderFrequency(_unreviewedReminderFrequency);
+        }
       }
     });
+
+    _updateNotifications();
   }
 
   void _openSettings() {
@@ -502,6 +564,12 @@ class _HomeScreenState extends State<HomeScreen> {
             });
             StorageService.saveCurrency(currency);
           },
+          notifyMonthlyReset: _notifyMonthlyReset,
+          onNotifyMonthlyResetChanged: _setNotifyMonthlyReset,
+          notifyUnreviewedItems: _notifyUnreviewedItems,
+          onNotifyUnreviewedItemsChanged: _setNotifyUnreviewedItems,
+          unreviewedReminderFrequency: _unreviewedReminderFrequency,
+          onUnreviewedReminderFrequencyChanged: _setUnreviewedReminderFrequency,
           onManageCategories: _openCategoryManager,
           items: _items,
           categories: _categories,
@@ -516,6 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _items.add(newItem);
     });
     StorageService.saveItems(_items);
+    _updateNotifications();
   }
 
   void _editItem(Item updatedItem) {
@@ -526,6 +595,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     StorageService.saveItems(_items);
+    _updateNotifications();
   }
 
   void _deleteItem(String id) {
@@ -533,6 +603,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _items.removeWhere((i) => i.id == id);
     });
     StorageService.saveItems(_items);
+    _updateNotifications();
   }
 
   void _handleReviewItem(Item item, bool used) {
@@ -582,6 +653,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     StorageService.saveItems(_items);
+    _updateNotifications();
   }
 
   void _resetAllReviews() {
@@ -591,6 +663,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     StorageService.saveItems(_items);
+    _updateNotifications();
   }
 
   void _openAddDialog() {

@@ -15,19 +15,28 @@ class BackupSettingsData {
   final String? localeCode;
   final bool? showSegmentedProgressBar;
   final Currency? currency;
+  final bool? notifyMonthlyReset;
+  final bool? notifyUnreviewedItems;
+  final String? unreviewedReminderFrequency;
 
   BackupSettingsData({
     this.themeMode,
     this.localeCode,
     this.showSegmentedProgressBar,
     this.currency,
+    this.notifyMonthlyReset,
+    this.notifyUnreviewedItems,
+    this.unreviewedReminderFrequency,
   });
 
   bool get hasData =>
       themeMode != null ||
       localeCode != null ||
       showSegmentedProgressBar != null ||
-      currency != null;
+      currency != null ||
+      notifyMonthlyReset != null ||
+      notifyUnreviewedItems != null ||
+      unreviewedReminderFrequency != null;
 }
 
 class BackupData {
@@ -67,6 +76,9 @@ class BackupService {
     required String localeCode,
     required bool showSegmentedProgressBar,
     required Currency currency,
+    bool notifyMonthlyReset = false,
+    bool notifyUnreviewedItems = false,
+    String unreviewedReminderFrequency = 'max_once_per_week',
   }) {
     final buffer = StringBuffer();
     buffer.writeln('# BRAZIER BACKUP V1');
@@ -83,6 +95,9 @@ class BackupService {
       buffer.writeln('currency_symbol,${_escapeCsv(currency.symbol)}');
       buffer.writeln('currency_name,${_escapeCsv(currency.name)}');
       buffer.writeln('currency_position,${_escapeCsv(currency.position.name)}');
+      buffer.writeln('notify_monthly_reset,${notifyMonthlyReset.toString()}');
+      buffer.writeln('notify_unreviewed_items,${notifyUnreviewedItems.toString()}');
+      buffer.writeln('unreviewed_reminder_frequency,${_escapeCsv(unreviewedReminderFrequency)}');
       buffer.writeln();
     }
 
@@ -297,11 +312,26 @@ class BackupService {
         );
       }
 
+      bool? notifyMonthlyReset;
+      if (settingsMap.containsKey('notify_monthly_reset')) {
+        notifyMonthlyReset = settingsMap['notify_monthly_reset'] == 'true';
+      }
+
+      bool? notifyUnreviewedItems;
+      if (settingsMap.containsKey('notify_unreviewed_items')) {
+        notifyUnreviewedItems = settingsMap['notify_unreviewed_items'] == 'true';
+      }
+
+      final unreviewedReminderFrequency = settingsMap['unreviewed_reminder_frequency'];
+
       settingsData = BackupSettingsData(
         themeMode: themeMode,
         localeCode: localeCode,
         showSegmentedProgressBar: showSegmentedProgressBar,
         currency: currency,
+        notifyMonthlyReset: notifyMonthlyReset,
+        notifyUnreviewedItems: notifyUnreviewedItems,
+        unreviewedReminderFrequency: unreviewedReminderFrequency,
       );
     }
 

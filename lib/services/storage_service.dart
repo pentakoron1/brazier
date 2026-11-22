@@ -12,6 +12,9 @@ class StorageService {
   static const String _segmentedProgressKey = 'brazier_segmented_progress_v1';
   static const String _currencyKey = 'brazier_currency_v1';
   static const String _localeKey = 'brazier_locale_code_v1';
+  static const String _notifyMonthlyResetKey = 'brazier_notify_monthly_reset_v1';
+  static const String _notifyUnreviewedItemsKey = 'brazier_notify_unreviewed_items_v1';
+  static const String _unreviewedReminderFrequencyKey = 'brazier_unreviewed_reminder_frequency_v1';
 
   /// Saves the list of categories to SharedPreferences.
   static Future<void> saveCategories(List<Category> categories) async {
@@ -121,5 +124,41 @@ class StorageService {
   static Future<String> loadLocaleCode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_localeKey) ?? 'system';
+  }
+
+  /// Saves monthly review reset notification setting.
+  static Future<void> saveNotifyMonthlyReset(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notifyMonthlyResetKey, value);
+  }
+
+  /// Loads monthly review reset notification setting.
+  static Future<bool> loadNotifyMonthlyReset() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_notifyMonthlyResetKey) ?? false;
+  }
+
+  /// Saves unreviewed items reminder notification setting.
+  static Future<void> saveNotifyUnreviewedItems(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notifyUnreviewedItemsKey, value);
+  }
+
+  /// Loads unreviewed items reminder notification setting.
+  static Future<bool> loadNotifyUnreviewedItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_notifyUnreviewedItemsKey) ?? false;
+  }
+
+  /// Saves unreviewed items reminder frequency setting.
+  static Future<void> saveUnreviewedReminderFrequency(String frequency) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_unreviewedReminderFrequencyKey, frequency);
+  }
+
+  /// Loads unreviewed items reminder frequency setting.
+  static Future<String> loadUnreviewedReminderFrequency() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_unreviewedReminderFrequencyKey) ?? 'max_once_per_week';
   }
 }
