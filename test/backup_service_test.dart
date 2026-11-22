@@ -76,11 +76,17 @@ void main() {
       localeCode: 'en',
       showSegmentedProgressBar: false,
       currency: Currency.usDollar,
+      notifyMonthlyReset: true,
+      notifyUnreviewedItems: true,
+      unreviewedReminderFrequency: 'max_once_per_day',
     );
 
     expect(csvContent.contains('# ITEMS'), false);
     expect(csvContent.contains('# SETTINGS'), true);
     expect(csvContent.contains('USD'), true);
+    expect(csvContent.contains('notify_monthly_reset,true'), true);
+    expect(csvContent.contains('notify_unreviewed_items,true'), true);
+    expect(csvContent.contains('unreviewed_reminder_frequency,max_once_per_day'), true);
 
     final parsedBackup = BackupService.parseCsvBackup(csvContent, [defaultCat]);
 
@@ -89,6 +95,9 @@ void main() {
     expect(parsedBackup.settings?.themeMode, ThemeMode.dark);
     expect(parsedBackup.settings?.showSegmentedProgressBar, false);
     expect(parsedBackup.settings?.currency?.code, 'USD');
+    expect(parsedBackup.settings?.notifyMonthlyReset, true);
+    expect(parsedBackup.settings?.notifyUnreviewedItems, true);
+    expect(parsedBackup.settings?.unreviewedReminderFrequency, 'max_once_per_day');
   });
 
   test('Export and import both items and settings', () {
