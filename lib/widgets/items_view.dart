@@ -1,3 +1,5 @@
+import 'package:brazier/theme/app_theme.dart';
+import 'package:brazier/widgets/shimmer_text.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -5,19 +7,14 @@ import '../models/currency.dart';
 import '../models/item.dart';
 import 'item_card.dart';
 
+import 'dart:ui' show ImageFilter;
+
 typedef ReorderCallback = void Function(int oldIndex, int newIndex);
 
-enum SortOption {
-  defaultOrder,
-  alphabetical,
-  cost,
-  usageStreak,
-}
+enum SortOption { defaultOrder, alphabetical, cost, usageStreak }
 
-enum SortDirection {
-  ascending,
-  descending,
-}
+enum SortDirection { ascending, descending }
+
 const _segmentStyle = ButtonStyle(
   visualDensity: VisualDensity.compact,
   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -30,7 +27,8 @@ class ItemsView extends StatefulWidget {
   final String searchQuery;
   final Set<String> selectedCategoryIds;
   final Set<ItemType> selectedItemTypes;
-  final Set<bool> goalSelection; // {} = both, {true} = reached, {false} = not reached
+  final Set<bool>
+  goalSelection; // {} = both, {true} = reached, {false} = not reached
   final Set<MonthlyReviewStatus> usageSelection; // {} = all
   final double maxItemPrice;
   final double? minPriceFilter;
@@ -96,7 +94,8 @@ class ItemsView extends StatefulWidget {
 
 class _ItemsViewState extends State<ItemsView> {
   bool _isCompactView = false;
-  int _activeSubmenuIndex = 0; // 0: Categories, 1: Price, 2: Status, 3: Search, 4: Display/Reorder
+  int _activeSubmenuIndex =
+      0; // 0: Categories, 1: Price, 2: Status, 3: Search, 4: Display/Reorder
   double _sidePanelWidth = 310.0;
 
   late FocusNode _searchFocusNode;
@@ -136,10 +135,13 @@ class _ItemsViewState extends State<ItemsView> {
     }
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     if (oldWidget.minPriceFilter != widget.minPriceFilter) {
-      _minPriceController.text = (widget.minPriceFilter ?? 0.0).toStringAsFixed(2);
+      _minPriceController.text = (widget.minPriceFilter ?? 0.0).toStringAsFixed(
+        2,
+      );
     }
     if (oldWidget.maxPriceFilter != widget.maxPriceFilter) {
-      _maxPriceController.text = (widget.maxPriceFilter ?? maxLimit).toStringAsFixed(2);
+      _maxPriceController.text = (widget.maxPriceFilter ?? maxLimit)
+          .toStringAsFixed(2);
     }
   }
 
@@ -172,26 +174,28 @@ class _ItemsViewState extends State<ItemsView> {
                 widget.onUpdateMonthlyStatus(item, newStatus),
           );
   }
-  Widget _buildCategoryButton(ThemeData theme, bool isDarkMode, Category cat) {
+
+  Widget _buildCategoryButton(ThemeData theme, Category cat) {
     final noneSelected = widget.selectedCategoryIds.isEmpty;
     final isSelected = widget.selectedCategoryIds.contains(cat.id);
 
-    final grey = isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600;
+    final grey = theme.colorScheme.onSurfaceVariant;
     final onCatColor =
-    ThemeData.estimateBrightnessForColor(cat.color) == Brightness.dark
+        ThemeData.estimateBrightnessForColor(cat.color) == Brightness.dark
         ? Colors.white
         : Colors.black87;
 
     final Color background = isSelected
         ? cat.color
-        : (isDarkMode
-        ? const Color(0xFF28303F)
-        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6));
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
 
     // none selected -> colored icon, selected -> everything colored, otherwise gray
-    final Color iconColor = isSelected ? onCatColor : (noneSelected ? cat.color : grey);
-    final Color textColor =
-    isSelected ? onCatColor : (noneSelected ? theme.colorScheme.onSurface : grey);
+    final Color iconColor = isSelected
+        ? onCatColor
+        : (noneSelected ? cat.color : grey);
+    final Color textColor = isSelected
+        ? onCatColor
+        : (noneSelected ? theme.colorScheme.onSurface : grey);
 
     return Material(
       color: background,
@@ -228,7 +232,43 @@ class _ItemsViewState extends State<ItemsView> {
       ),
     );
   }
-  Widget _buildReorderableGridItem(int index, int crossAxisCount, double tileWidth) {
+
+  Widget _buildBranding(ThemeData theme) {
+    return SizedBox(
+      height: 52,
+      child: Center(
+        child: Opacity(
+          opacity: 1,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'fastlane/metadata/android/en-US/images/icon/logo.png',
+                height: 22,
+              ),
+              const SizedBox(width: 6),
+
+              ShimmerText(
+                text: 'Brazier',
+                baseColor: theme.colorScheme.outline,
+                glareColor: AppColors.flameYellow,
+                secondGlareColor: AppColors.yellowOrange,// your orange
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReorderableGridItem(
+    int index,
+    int crossAxisCount,
+    double tileWidth,
+  ) {
     final item = widget.items[index];
     final theme = Theme.of(context);
 
@@ -253,10 +293,7 @@ class _ItemsViewState extends State<ItemsView> {
             color: Colors.transparent,
             child: SizedBox(
               width: tileWidth,
-              child: Opacity(
-                opacity: 0.92,
-                child: _buildItemCard(item),
-              ),
+              child: Opacity(opacity: 0.92, child: _buildItemCard(item)),
             ),
           ),
           childWhenDragging: Opacity(
@@ -278,10 +315,17 @@ class _ItemsViewState extends State<ItemsView> {
     );
   }
 
-  Widget _buildSubmenuPanel(BuildContext context, ThemeData theme, bool isDarkMode, {int? indexOverride}) {
+  Widget _buildSubmenuPanel(
+    BuildContext context,
+    ThemeData theme, {
+    int? indexOverride,
+  }) {
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     final currentMin = (widget.minPriceFilter ?? 0.0).clamp(0.0, maxLimit);
-    final currentMax = (widget.maxPriceFilter ?? maxLimit).clamp(currentMin, maxLimit);
+    final currentMax = (widget.maxPriceFilter ?? maxLimit).clamp(
+      currentMin,
+      maxLimit,
+    );
 
     final noCategorySelected = widget.selectedCategoryIds.isEmpty;
     final targetIndex = indexOverride ?? _activeSubmenuIndex;
@@ -311,9 +355,11 @@ class _ItemsViewState extends State<ItemsView> {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: noCategorySelected
-                          ? (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)
+                          ? theme.colorScheme.onSurfaceVariant
                           : theme.colorScheme.primary,
-                      fontWeight: noCategorySelected ? FontWeight.normal : FontWeight.bold,
+                      fontWeight: noCategorySelected
+                          ? FontWeight.normal
+                          : FontWeight.bold,
                     ),
                   ),
                 ),
@@ -328,7 +374,7 @@ class _ItemsViewState extends State<ItemsView> {
                   spacing: 6,
                   runSpacing: 6,
                   children: widget.categories
-                      .map((cat) => _buildCategoryButton(theme, isDarkMode, cat))
+                      .map((cat) => _buildCategoryButton(theme, cat))
                       .toList(),
                 ),
               ),
@@ -355,9 +401,7 @@ class _ItemsViewState extends State<ItemsView> {
               min: 0.0,
               max: maxLimit,
               activeColor: theme.colorScheme.primary,
-              inactiveColor: isDarkMode
-                  ? const Color(0xFF28303F)
-                  : theme.colorScheme.surfaceContainerHighest,
+              inactiveColor: theme.colorScheme.surfaceContainerHighest,
               labels: RangeLabels(
                 widget.currency.format(currentMin),
                 widget.currency.format(currentMax),
@@ -379,11 +423,16 @@ class _ItemsViewState extends State<ItemsView> {
                 Expanded(
                   child: TextField(
                     controller: _minPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Min (${widget.currency.symbol})',
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       border: const OutlineInputBorder(),
                     ),
                     onChanged: (val) {
@@ -401,11 +450,16 @@ class _ItemsViewState extends State<ItemsView> {
                 Expanded(
                   child: TextField(
                     controller: _maxPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Max (${widget.currency.symbol})',
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       border: const OutlineInputBorder(),
                     ),
                     onChanged: (val) {
@@ -550,8 +604,13 @@ class _ItemsViewState extends State<ItemsView> {
                       )
                     : null,
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 16,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -582,7 +641,10 @@ class _ItemsViewState extends State<ItemsView> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                const Text('Card Layout:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Card Layout:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<bool>(
@@ -620,20 +682,40 @@ class _ItemsViewState extends State<ItemsView> {
                     // Sort by
                     Row(
                       children: [
-                        const Text('Sort By:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Sort By:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButton<SortOption>(
                             value: _tempSortOption,
                             isExpanded: true,
                             items: const [
-                              DropdownMenuItem(value: SortOption.defaultOrder, child: Text('Default Order')),
-                              DropdownMenuItem(value: SortOption.alphabetical, child: Text('Alphabetically')),
-                              DropdownMenuItem(value: SortOption.cost, child: Text('Cost / Price')),
-                              DropdownMenuItem(value: SortOption.usageStreak, child: Text('Usage Streak')),
+                              DropdownMenuItem(
+                                value: SortOption.defaultOrder,
+                                child: Text('Default Order'),
+                              ),
+                              DropdownMenuItem(
+                                value: SortOption.alphabetical,
+                                child: Text('Alphabetically'),
+                              ),
+                              DropdownMenuItem(
+                                value: SortOption.cost,
+                                child: Text('Cost / Price'),
+                              ),
+                              DropdownMenuItem(
+                                value: SortOption.usageStreak,
+                                child: Text('Usage Streak'),
+                              ),
                             ],
                             onChanged: (opt) {
-                              if (opt != null) setState(() => _tempSortOption = opt);
+                              if (opt != null) {
+                                setState(() => _tempSortOption = opt);
+                              }
                             },
                           ),
                         ),
@@ -647,15 +729,31 @@ class _ItemsViewState extends State<ItemsView> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        const Text('Direction:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Direction:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         SegmentedButton<SortDirection>(
                           segments: const [
-                            ButtonSegment(value: SortDirection.ascending, icon: Icon(Icons.arrow_upward, size: 16), label: Text('Asc')),
-                            ButtonSegment(value: SortDirection.descending, icon: Icon(Icons.arrow_downward, size: 16), label: Text('Desc')),
+                            ButtonSegment(
+                              value: SortDirection.ascending,
+                              icon: Icon(Icons.arrow_upward, size: 16),
+                              label: Text('Asc'),
+                            ),
+                            ButtonSegment(
+                              value: SortDirection.descending,
+                              icon: Icon(Icons.arrow_downward, size: 16),
+                              label: Text('Desc'),
+                            ),
                           ],
                           selected: {_tempSortDirection},
                           onSelectionChanged: (selection) {
-                            setState(() => _tempSortDirection = selection.first);
+                            setState(
+                              () => _tempSortDirection = selection.first,
+                            );
                           },
                         ),
                       ],
@@ -666,7 +764,10 @@ class _ItemsViewState extends State<ItemsView> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: FilledButton.icon(
-                        onPressed: () => widget.onApplySorting(_tempSortOption, _tempSortDirection),
+                        onPressed: () => widget.onApplySorting(
+                          _tempSortOption,
+                          _tempSortDirection,
+                        ),
                         icon: const Icon(Icons.check, size: 16),
                         label: const Text('Reorder'),
                       ),
@@ -683,43 +784,62 @@ class _ItemsViewState extends State<ItemsView> {
     }
   }
 
-  Widget _buildWideSidePanel(BuildContext context, ThemeData theme, bool isDarkMode, int activeFilterCount) {
+  Widget _buildWideSidePanel(
+    BuildContext context,
+    ThemeData theme,
+    int activeFilterCount,
+  ) {
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E2634) : theme.colorScheme.surface,
+        color: theme.colorScheme.surface,
         border: Border(
-          right: BorderSide(
-            color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
-          ),
+          right: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
       ),
       child: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 3), // Search
+              _buildSubmenuPanel(context, theme, indexOverride: 3), // Search
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
 
-              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 0), // Categories
+              _buildSubmenuPanel(
+                context,
+                theme,
+                indexOverride: 0,
+              ), // Categories
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
 
-              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 1), // Price Range
+              _buildSubmenuPanel(
+                context,
+                theme,
+                indexOverride: 1,
+              ), // Price Range
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
 
-              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 2), // Status & Type
+              _buildSubmenuPanel(
+                context,
+                theme,
+                indexOverride: 2,
+              ), // Status & Type
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
 
-              _buildSubmenuPanel(context, theme, isDarkMode, indexOverride: 4), // Display & Sorting
+              _buildSubmenuPanel(
+                context,
+                theme,
+                indexOverride: 4,
+              ), // Display & Sorting
 
               if (activeFilterCount > 0) ...[
                 const SizedBox(height: 20),
@@ -797,8 +917,9 @@ class _ItemsViewState extends State<ItemsView> {
 
         if (crossAxisCount == 1) {
           return ReorderableListView.builder(
+            header: _buildBranding(Theme.of(context)),
             itemCount: widget.items.length,
-            padding: EdgeInsets.only(top: topPadding, bottom: 180, left: 12, right: 12),
+            padding: EdgeInsets.only(bottom: 180, left: 6, right: 6),
             onReorderStart: (_) {
               HapticFeedback.mediumImpact();
             },
@@ -816,11 +937,17 @@ class _ItemsViewState extends State<ItemsView> {
             },
           );
         } else {
-          final tileWidth = (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
+          final tileWidth =
+              (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
 
           return GridView.builder(
             itemCount: widget.items.length,
-            padding: EdgeInsets.only(left: 12, right: 12, bottom: 150, top: topPadding),
+            padding: EdgeInsets.only(
+              left: 6,
+              right: 6,
+              bottom: 150,
+              top: topPadding,
+            ),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
               mainAxisExtent: _isCompactView ? 95 : 240,
@@ -828,7 +955,11 @@ class _ItemsViewState extends State<ItemsView> {
               mainAxisSpacing: 8,
             ),
             itemBuilder: (context, index) {
-              return _buildReorderableGridItem(index, crossAxisCount, tileWidth);
+              return _buildReorderableGridItem(
+                index,
+                crossAxisCount,
+                tileWidth,
+              );
             },
           );
         }
@@ -839,21 +970,25 @@ class _ItemsViewState extends State<ItemsView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
-    final isPriceFiltered = (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
-        (widget.maxPriceFilter != null && widget.maxPriceFilter! < (maxLimit - 0.01));
+    final isPriceFiltered =
+        (widget.minPriceFilter != null && widget.minPriceFilter! > 0.01) ||
+        (widget.maxPriceFilter != null &&
+            widget.maxPriceFilter! < (maxLimit - 0.01));
 
     final isGoalActive = widget.goalSelection.length == 1;
-    final isUsageActive = widget.usageSelection.isNotEmpty &&
+    final isUsageActive =
+        widget.usageSelection.isNotEmpty &&
         widget.usageSelection.length < MonthlyReviewStatus.values.length;
     final isTypeActive = widget.selectedItemTypes.length == 1;
 
     final categoriesCount = widget.selectedCategoryIds.length;
     final priceCount = isPriceFiltered ? 1 : 0;
     final statusCount =
-        (isGoalActive ? 1 : 0) + (isUsageActive ? 1 : 0) + (isTypeActive ? 1 : 0);
+        (isGoalActive ? 1 : 0) +
+        (isUsageActive ? 1 : 0) +
+        (isTypeActive ? 1 : 0);
     final searchCount = widget.searchQuery.isNotEmpty ? 1 : 0;
 
     final activeFilterCount =
@@ -870,12 +1005,32 @@ class _ItemsViewState extends State<ItemsView> {
           label: Text('$count'),
           child: Icon(
             icon,
-            color: _activeSubmenuIndex == index ? theme.colorScheme.primary : null,
+            color: _activeSubmenuIndex == index
+                ? theme.colorScheme.primary
+                : null,
           ),
         ),
         onPressed: () => setState(() => _activeSubmenuIndex = index),
       );
     }
+
+    Widget blurredCircle({required Color color, required Widget child}) {
+      return ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: color,
+            shape: CircleBorder(
+              side: BorderSide(
+                color: theme.colorScheme.inverseSurface.withValues(alpha: 0.08),
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      );
+    }
+
     // Floating action buttons row (Filter left, Settings right) with NO bar background behind them
     Widget buildFloatingButtonsRow() {
       return Padding(
@@ -883,22 +1038,25 @@ class _ItemsViewState extends State<ItemsView> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Material(
-              elevation: 4,
-              shape: const CircleBorder(),
-              color: activeFilterCount > 0
-                  ? theme.colorScheme.primaryContainer
-                  : (isDarkMode ? const Color(0xFF242C3B) : theme.colorScheme.surface),
+            blurredCircle(
+              color:
+                  (activeFilterCount > 0
+                          ? theme.colorScheme.primaryContainer
+                          : theme.colorScheme.surfaceContainerHighest)
+                      .withValues(alpha: 0.30),
               child: IconButton(
                 tooltip: activeFilterCount > 0
                     ? 'Filters ($activeFilterCount active)'
                     : 'Filter & View Controls',
                 icon: Badge(
                   isLabelVisible:
-                  activeFilterCount > 0 && (!widget.isFilterExpanded || isWideScreen),
+                      activeFilterCount > 0 &&
+                      (!widget.isFilterExpanded || isWideScreen),
                   label: Text('$activeFilterCount'),
                   child: Icon(
-                    widget.isFilterExpanded ? Icons.filter_list_off : Icons.filter_list,
+                    widget.isFilterExpanded
+                        ? Icons.filter_list_off
+                        : Icons.filter_list,
                     color: activeFilterCount > 0
                         ? theme.colorScheme.onPrimaryContainer
                         : theme.colorScheme.onSurface,
@@ -907,10 +1065,10 @@ class _ItemsViewState extends State<ItemsView> {
                 onPressed: widget.onToggleFilter,
               ),
             ),
-            Material(
-              elevation: 4,
-              shape: const CircleBorder(),
-              color: isDarkMode ? const Color(0xFF242C3B) : theme.colorScheme.surface,
+            blurredCircle(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.30,
+              ),
               child: IconButton(
                 tooltip: 'Settings',
                 icon: const Icon(Icons.settings_outlined),
@@ -933,15 +1091,21 @@ class _ItemsViewState extends State<ItemsView> {
                 220.0,
                 (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0),
               ),
-              child: _buildWideSidePanel(context, theme, isDarkMode, activeFilterCount),
+              child: _buildWideSidePanel(context, theme, activeFilterCount),
             ),
             MouseRegion(
               cursor: SystemMouseCursors.resizeLeftRight,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragUpdate: (details) {
-                  final maxW = (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0);
-                  final newWidth = (_sidePanelWidth + details.delta.dx).clamp(220.0, maxW);
+                  final maxW = (MediaQuery.of(context).size.width * 0.5).clamp(
+                    280.0,
+                    600.0,
+                  );
+                  final newWidth = (_sidePanelWidth + details.delta.dx).clamp(
+                    220.0,
+                    maxW,
+                  );
                   setState(() {
                     _sidePanelWidth = newWidth;
                   });
@@ -955,9 +1119,7 @@ class _ItemsViewState extends State<ItemsView> {
                       width: 4,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? const Color(0xFF3B485E)
-                            : theme.colorScheme.outlineVariant,
+                        color: theme.colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Center(
@@ -999,22 +1161,22 @@ class _ItemsViewState extends State<ItemsView> {
       children: [
         // Real Layout Filter Section (pushes everything below down)
         if (widget.isFilterExpanded)
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          SizedBox(
+            width: double.infinity,
             child: Material(
               elevation: 4,
-              color: isDarkMode
-                  ? const Color(0xFF1E2634)
-                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
-                  ),
+              color: theme.colorScheme.surfaceContainerLow.withValues(
+                alpha: 0.5,
+              ),
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(24),
                 ),
+                side: BorderSide(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1024,22 +1186,40 @@ class _ItemsViewState extends State<ItemsView> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          buildTab(0, Icons.category_outlined, 'Categories', categoriesCount),
-                          buildTab(1, Icons.monetization_on_outlined, 'Price Range', priceCount),
-                          buildTab(2, Icons.check_circle_outline, 'Status & Type', statusCount),
+                          buildTab(
+                            0,
+                            Icons.category_outlined,
+                            'Categories',
+                            categoriesCount,
+                          ),
+                          buildTab(
+                            1,
+                            Icons.monetization_on_outlined,
+                            'Price Range',
+                            priceCount,
+                          ),
+                          buildTab(
+                            2,
+                            Icons.check_circle_outline,
+                            'Status & Type',
+                            statusCount,
+                          ),
                           buildTab(3, Icons.search, 'Search', searchCount),
                           buildTab(4, Icons.tune, 'Display & Sort', 0),
                           const SizedBox(width: 12),
                           if (activeFilterCount > 0)
                             TextButton(
                               onPressed: widget.onResetFilters,
-                              child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                              child: const Text(
+                                'Clear All',
+                                style: TextStyle(fontSize: 12),
+                              ),
                             ),
                         ],
                       ),
                     ),
                     const Divider(height: 12),
-                    _buildSubmenuPanel(context, theme, isDarkMode),
+                    _buildSubmenuPanel(context, theme),
                   ],
                 ),
               ),

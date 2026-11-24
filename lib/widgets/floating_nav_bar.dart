@@ -20,17 +20,17 @@ class FloatingNavBar extends StatelessWidget {
 
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 150),
-        padding: EdgeInsets.fromLTRB(16 + leftMargin, 0, 16, 12),
+        padding: EdgeInsets.fromLTRB(20 + leftMargin, 0, 20, 12),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: Theme.of(context).colorScheme.inverseSurface.withValues(alpha: 0.1),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
