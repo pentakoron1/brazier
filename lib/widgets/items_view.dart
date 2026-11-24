@@ -173,11 +173,11 @@ class _ItemsViewState extends State<ItemsView> {
           );
   }
 
-  Widget _buildCategoryButton(ThemeData theme, bool isDarkMode, Category cat) {
+  Widget _buildCategoryButton(ThemeData theme, Category cat) {
     final noneSelected = widget.selectedCategoryIds.isEmpty;
     final isSelected = widget.selectedCategoryIds.contains(cat.id);
 
-    final grey = isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600;
+    final grey = theme.colorScheme.surfaceContainerHighest;
     final onCatColor =
         ThemeData.estimateBrightnessForColor(cat.color) == Brightness.dark
         ? Colors.white
@@ -185,11 +185,9 @@ class _ItemsViewState extends State<ItemsView> {
 
     final Color background = isSelected
         ? cat.color
-        : (isDarkMode
-              ? const Color(0xFF28303F)
-              : theme.colorScheme.surfaceContainerHighest.withValues(
+        : theme.colorScheme.surfaceContainerHighest.withValues(
                   alpha: 0.6,
-                ));
+                );
 
     // none selected -> colored icon, selected -> everything colored, otherwise gray
     final Color iconColor = isSelected
@@ -288,8 +286,7 @@ class _ItemsViewState extends State<ItemsView> {
 
   Widget _buildSubmenuPanel(
     BuildContext context,
-    ThemeData theme,
-    bool isDarkMode, {
+    ThemeData theme, {
     int? indexOverride,
   }) {
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
@@ -327,9 +324,7 @@ class _ItemsViewState extends State<ItemsView> {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: noCategorySelected
-                          ? (isDarkMode
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600)
+                          ?  theme.colorScheme.surfaceContainerHighest
                           : theme.colorScheme.primary,
                       fontWeight: noCategorySelected
                           ? FontWeight.normal
@@ -349,7 +344,7 @@ class _ItemsViewState extends State<ItemsView> {
                   runSpacing: 6,
                   children: widget.categories
                       .map(
-                        (cat) => _buildCategoryButton(theme, isDarkMode, cat),
+                        (cat) => _buildCategoryButton(theme, cat),
                       )
                       .toList(),
                 ),
@@ -377,9 +372,7 @@ class _ItemsViewState extends State<ItemsView> {
               min: 0.0,
               max: maxLimit,
               activeColor: theme.colorScheme.primary,
-              inactiveColor: isDarkMode
-                  ? const Color(0xFF28303F)
-                  : theme.colorScheme.surfaceContainerHighest,
+              inactiveColor: theme.colorScheme.surfaceContainerHighest,
               labels: RangeLabels(
                 widget.currency.format(currentMin),
                 widget.currency.format(currentMax),
@@ -691,8 +684,9 @@ class _ItemsViewState extends State<ItemsView> {
                               ),
                             ],
                             onChanged: (opt) {
-                              if (opt != null)
+                              if (opt != null) {
                                 setState(() => _tempSortOption = opt);
+                              }
                             },
                           ),
                         ),
@@ -764,17 +758,14 @@ class _ItemsViewState extends State<ItemsView> {
   Widget _buildWideSidePanel(
     BuildContext context,
     ThemeData theme,
-    bool isDarkMode,
     int activeFilterCount,
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E2634) : theme.colorScheme.surface,
+        color: theme.colorScheme.surface,
         border: Border(
           right: BorderSide(
-            color: isDarkMode
-                ? const Color(0xFF2E3B4E)
-                : theme.colorScheme.outlineVariant,
+            color: theme.colorScheme.outlineVariant,
           ),
         ),
       ),
@@ -787,7 +778,6 @@ class _ItemsViewState extends State<ItemsView> {
               _buildSubmenuPanel(
                 context,
                 theme,
-                isDarkMode,
                 indexOverride: 3,
               ), // Search
               const SizedBox(height: 16),
@@ -797,7 +787,6 @@ class _ItemsViewState extends State<ItemsView> {
               _buildSubmenuPanel(
                 context,
                 theme,
-                isDarkMode,
                 indexOverride: 0,
               ), // Categories
               const SizedBox(height: 16),
@@ -807,7 +796,6 @@ class _ItemsViewState extends State<ItemsView> {
               _buildSubmenuPanel(
                 context,
                 theme,
-                isDarkMode,
                 indexOverride: 1,
               ), // Price Range
               const SizedBox(height: 16),
@@ -817,7 +805,6 @@ class _ItemsViewState extends State<ItemsView> {
               _buildSubmenuPanel(
                 context,
                 theme,
-                isDarkMode,
                 indexOverride: 2,
               ), // Status & Type
               const SizedBox(height: 16),
@@ -827,7 +814,6 @@ class _ItemsViewState extends State<ItemsView> {
               _buildSubmenuPanel(
                 context,
                 theme,
-                isDarkMode,
                 indexOverride: 4,
               ), // Display & Sorting
 
@@ -964,7 +950,6 @@ class _ItemsViewState extends State<ItemsView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     final maxLimit = widget.maxItemPrice > 0 ? widget.maxItemPrice : 100.0;
     final isPriceFiltered =
@@ -1017,7 +1002,7 @@ class _ItemsViewState extends State<ItemsView> {
             color: color,
             shape: CircleBorder(
               side: BorderSide(
-                color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                color: theme.colorScheme.surface.withValues(
                   alpha: 0.08,
                 ),
               ),
@@ -1089,7 +1074,6 @@ class _ItemsViewState extends State<ItemsView> {
               child: _buildWideSidePanel(
                 context,
                 theme,
-                isDarkMode,
                 activeFilterCount,
               ),
             ),
@@ -1119,9 +1103,7 @@ class _ItemsViewState extends State<ItemsView> {
                       width: 4,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? const Color(0xFF3B485E)
-                            : theme.colorScheme.outlineVariant,
+                        color: theme.colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Center(
@@ -1174,9 +1156,7 @@ class _ItemsViewState extends State<ItemsView> {
                   bottom: Radius.circular(24),
                 ),
                 side: BorderSide(
-                  color: isDarkMode
-                      ? const Color(0xFF2E3B4E)
-                      : theme.colorScheme.outlineVariant,
+                  color: theme.colorScheme.outlineVariant,
                 ),
               ),
               child: Padding(
@@ -1223,7 +1203,7 @@ class _ItemsViewState extends State<ItemsView> {
                       ),
                     ),
                     const Divider(height: 12),
-                    _buildSubmenuPanel(context, theme, isDarkMode),
+                    _buildSubmenuPanel(context, theme),
                   ],
                 ),
               ),
