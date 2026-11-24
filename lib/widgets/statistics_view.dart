@@ -495,6 +495,7 @@ class _StatusStatBox extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
