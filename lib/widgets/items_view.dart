@@ -232,7 +232,30 @@ class _ItemsViewState extends State<ItemsView> {
       ),
     );
   }
-
+  Widget _buildBranding(ThemeData theme) {
+    return SizedBox(
+      height: 52,
+      child: Center(
+        child: Opacity(
+          opacity: 1,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('fastlane/metadata/android/en-US/images/icon/logo.png', height: 22),
+              const SizedBox(width: 6),
+              Text(
+                'Brazier',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   Widget _buildReorderableGridItem(
     int index,
     int crossAxisCount,
@@ -894,9 +917,9 @@ class _ItemsViewState extends State<ItemsView> {
 
         if (crossAxisCount == 1) {
           return ReorderableListView.builder(
+            header: _buildBranding(Theme.of(context)),
             itemCount: widget.items.length,
             padding: EdgeInsets.only(
-              top: topPadding,
               bottom: 180,
               left: 6,
               right: 6,
@@ -1147,10 +1170,11 @@ class _ItemsViewState extends State<ItemsView> {
         // Real Layout Filter Section (pushes everything below down)
         if (widget.isFilterExpanded)
           SizedBox(
+
             width: double.infinity,
             child: Material(
               elevation: 4,
-              color: theme.colorScheme.surfaceContainerLow,
+              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
               clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: const BorderRadius.vertical(
