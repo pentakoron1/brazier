@@ -1,3 +1,5 @@
+import 'package:brazier/theme/app_theme.dart';
+import 'package:brazier/widgets/shimmer_text.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -185,9 +187,7 @@ class _ItemsViewState extends State<ItemsView> {
 
     final Color background = isSelected
         ? cat.color
-        : theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.6,
-                );
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
 
     // none selected -> colored icon, selected -> everything colored, otherwise gray
     final Color iconColor = isSelected
@@ -232,6 +232,7 @@ class _ItemsViewState extends State<ItemsView> {
       ),
     );
   }
+
   Widget _buildBranding(ThemeData theme) {
     return SizedBox(
       height: 52,
@@ -241,13 +242,19 @@ class _ItemsViewState extends State<ItemsView> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset('fastlane/metadata/android/en-US/images/icon/logo.png', height: 22),
+              Image.asset(
+                'fastlane/metadata/android/en-US/images/icon/logo.png',
+                height: 22,
+              ),
               const SizedBox(width: 6),
-              Text(
-                'Brazier',
+
+              ShimmerText(
+                text: 'Brazier',
+                baseColor: theme.colorScheme.outline,
+                glareColor: AppColors.flameYellow,
+                secondGlareColor: AppColors.yellowOrange,// your orange
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.outline,
                 ),
               ),
             ],
@@ -256,6 +263,7 @@ class _ItemsViewState extends State<ItemsView> {
       ),
     );
   }
+
   Widget _buildReorderableGridItem(
     int index,
     int crossAxisCount,
@@ -347,7 +355,7 @@ class _ItemsViewState extends State<ItemsView> {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: noCategorySelected
-                          ?  theme.colorScheme.onSurfaceVariant
+                          ? theme.colorScheme.onSurfaceVariant
                           : theme.colorScheme.primary,
                       fontWeight: noCategorySelected
                           ? FontWeight.normal
@@ -366,9 +374,7 @@ class _ItemsViewState extends State<ItemsView> {
                   spacing: 6,
                   runSpacing: 6,
                   children: widget.categories
-                      .map(
-                        (cat) => _buildCategoryButton(theme, cat),
-                      )
+                      .map((cat) => _buildCategoryButton(theme, cat))
                       .toList(),
                 ),
               ),
@@ -787,9 +793,7 @@ class _ItemsViewState extends State<ItemsView> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
-          right: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-          ),
+          right: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
       ),
       child: SafeArea(
@@ -799,11 +803,7 @@ class _ItemsViewState extends State<ItemsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSubmenuPanel(
-                context,
-                theme,
-                indexOverride: 3,
-              ), // Search
+              _buildSubmenuPanel(context, theme, indexOverride: 3), // Search
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
@@ -919,11 +919,7 @@ class _ItemsViewState extends State<ItemsView> {
           return ReorderableListView.builder(
             header: _buildBranding(Theme.of(context)),
             itemCount: widget.items.length,
-            padding: EdgeInsets.only(
-              bottom: 180,
-              left: 6,
-              right: 6,
-            ),
+            padding: EdgeInsets.only(bottom: 180, left: 6, right: 6),
             onReorderStart: (_) {
               HapticFeedback.mediumImpact();
             },
@@ -1026,9 +1022,7 @@ class _ItemsViewState extends State<ItemsView> {
             color: color,
             shape: CircleBorder(
               side: BorderSide(
-                color: theme.colorScheme.inverseSurface.withValues(
-                  alpha: 0.08,
-                ),
+                color: theme.colorScheme.inverseSurface.withValues(alpha: 0.08),
               ),
             ),
             child: child,
@@ -1072,7 +1066,9 @@ class _ItemsViewState extends State<ItemsView> {
               ),
             ),
             blurredCircle(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.30),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.30,
+              ),
               child: IconButton(
                 tooltip: 'Settings',
                 icon: const Icon(Icons.settings_outlined),
@@ -1095,11 +1091,7 @@ class _ItemsViewState extends State<ItemsView> {
                 220.0,
                 (MediaQuery.of(context).size.width * 0.5).clamp(280.0, 600.0),
               ),
-              child: _buildWideSidePanel(
-                context,
-                theme,
-                activeFilterCount,
-              ),
+              child: _buildWideSidePanel(context, theme, activeFilterCount),
             ),
             MouseRegion(
               cursor: SystemMouseCursors.resizeLeftRight,
@@ -1170,19 +1162,18 @@ class _ItemsViewState extends State<ItemsView> {
         // Real Layout Filter Section (pushes everything below down)
         if (widget.isFilterExpanded)
           SizedBox(
-
             width: double.infinity,
             child: Material(
               elevation: 4,
-              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainerLow.withValues(
+                alpha: 0.5,
+              ),
               clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(24),
                 ),
-                side: BorderSide(
-                  color: theme.colorScheme.outlineVariant,
-                ),
+                side: BorderSide(color: theme.colorScheme.outlineVariant),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
