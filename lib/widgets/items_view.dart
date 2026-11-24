@@ -940,29 +940,25 @@ class _ItemsViewState extends State<ItemsView> {
           final tileWidth =
               (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
 
-          return Column(
-            children: [
-              _buildBranding(Theme.of(context)),
-              Expanded(
-                child: GridView.builder(
-                  itemCount: widget.items.length,
-                  padding: EdgeInsets.only(
-                    left: 6,
-                    right: 6,
-                  ),
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildBranding(Theme.of(context)),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 150),
+                sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     mainAxisExtent: _isCompactView ? 95 : 240,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
                   ),
-                  itemBuilder: (context, index) {
-                    return _buildReorderableGridItem(
-                      index,
-                      crossAxisCount,
-                      tileWidth,
-                    );
-                  },
+                  delegate: SliverChildBuilderDelegate(
+                        (context, index) =>
+                        _buildReorderableGridItem(index, crossAxisCount, tileWidth),
+                    childCount: widget.items.length,
+                  ),
                 ),
               ),
             ],
