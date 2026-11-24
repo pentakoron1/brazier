@@ -177,7 +177,7 @@ class _ItemsViewState extends State<ItemsView> {
     final noneSelected = widget.selectedCategoryIds.isEmpty;
     final isSelected = widget.selectedCategoryIds.contains(cat.id);
 
-    final grey = theme.colorScheme.surfaceContainerHighest;
+    final grey = theme.colorScheme.onSurfaceVariant;
     final onCatColor =
         ThemeData.estimateBrightnessForColor(cat.color) == Brightness.dark
         ? Colors.white
@@ -324,7 +324,7 @@ class _ItemsViewState extends State<ItemsView> {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: noCategorySelected
-                          ?  theme.colorScheme.surfaceContainerHighest
+                          ?  theme.colorScheme.onSurfaceVariant
                           : theme.colorScheme.primary,
                       fontWeight: noCategorySelected
                           ? FontWeight.normal
