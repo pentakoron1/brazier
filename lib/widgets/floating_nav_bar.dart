@@ -20,7 +20,7 @@ class FloatingNavBar extends StatelessWidget {
 
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 150),
-        padding: EdgeInsets.fromLTRB(16 + leftMargin, 0, 16, 12),
+        padding: EdgeInsets.fromLTRB(20 + leftMargin, 0, 20, 12),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),

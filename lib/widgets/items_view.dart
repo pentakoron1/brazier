@@ -798,7 +798,7 @@ class _ItemsViewState extends State<ItemsView> {
         if (crossAxisCount == 1) {
           return ReorderableListView.builder(
             itemCount: widget.items.length,
-            padding: EdgeInsets.only(top: topPadding, bottom: 180, left: 12, right: 12),
+            padding: EdgeInsets.only(top: topPadding, bottom: 180, left: 6, right: 6),
             onReorderStart: (_) {
               HapticFeedback.mediumImpact();
             },
@@ -820,7 +820,7 @@ class _ItemsViewState extends State<ItemsView> {
 
           return GridView.builder(
             itemCount: widget.items.length,
-            padding: EdgeInsets.only(left: 12, right: 12, bottom: 150, top: topPadding),
+            padding: EdgeInsets.only(left: 6, right: 6, bottom: 150, top: topPadding),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
               mainAxisExtent: _isCompactView ? 95 : 240,
