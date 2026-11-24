@@ -999,22 +999,24 @@ class _ItemsViewState extends State<ItemsView> {
       children: [
         // Real Layout Filter Section (pushes everything below down)
         if (widget.isFilterExpanded)
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          SizedBox(
+            width: double.infinity,
             child: Material(
               elevation: 4,
               color: isDarkMode
                   ? const Color(0xFF1E2634)
-                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDarkMode ? const Color(0xFF2E3B4E) : theme.colorScheme.outlineVariant,
-                  ),
+                  : theme.colorScheme.surfaceContainerLow,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                side: BorderSide(
+                  color: isDarkMode
+                      ? const Color(0xFF2E3B4E)
+                      : theme.colorScheme.outlineVariant,
                 ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
