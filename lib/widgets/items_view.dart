@@ -252,7 +252,7 @@ class _ItemsViewState extends State<ItemsView> {
                 text: 'Brazier',
                 baseColor: theme.colorScheme.outline,
                 glareColor: AppColors.flameYellow,
-                secondGlareColor: AppColors.yellowOrange,// your orange
+                secondGlareColor: AppColors.yellowOrange, // your orange
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -940,27 +940,32 @@ class _ItemsViewState extends State<ItemsView> {
           final tileWidth =
               (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
 
-          return GridView.builder(
-            itemCount: widget.items.length,
-            padding: EdgeInsets.only(
-              left: 6,
-              right: 6,
-              bottom: 150,
-              top: topPadding,
-            ),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisExtent: _isCompactView ? 95 : 240,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemBuilder: (context, index) {
-              return _buildReorderableGridItem(
-                index,
-                crossAxisCount,
-                tileWidth,
-              );
-            },
+          return Column(
+            children: [
+              _buildBranding(Theme.of(context)),
+              Expanded(
+                child: GridView.builder(
+                  itemCount: widget.items.length,
+                  padding: EdgeInsets.only(
+                    left: 6,
+                    right: 6,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisExtent: _isCompactView ? 95 : 240,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemBuilder: (context, index) {
+                    return _buildReorderableGridItem(
+                      index,
+                      crossAxisCount,
+                      tileWidth,
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         }
       },
