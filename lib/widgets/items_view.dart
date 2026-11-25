@@ -97,6 +97,15 @@ class _ItemsViewState extends State<ItemsView> {
   int _activeSubmenuIndex =
       0; // 0: Categories, 1: Price, 2: Status, 3: Search, 4: Display/Reorder
   double _sidePanelWidth = 310.0;
+  bool _isPullingDownAtTop = false;
+
+  void _setPullingDownAtTop(bool value) {
+    if (_isPullingDownAtTop != value) {
+      setState(() {
+        _isPullingDownAtTop = value;
+      });
+    }
+  }
 
   late FocusNode _searchFocusNode;
 
@@ -256,6 +265,7 @@ class _ItemsViewState extends State<ItemsView> {
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
+                isShimmering: _isPullingDownAtTop,
               ),
             ],
           ),
@@ -903,6 +913,33 @@ class _ItemsViewState extends State<ItemsView> {
     );
   }
 
+  Widget _buildScrollableItemsListOrGrid() {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.axis == Axis.vertical) {
+          if (notification is OverscrollNotification) {
+            if (notification.overscroll < 0) {
+              _setPullingDownAtTop(true);
+            } else if (notification.overscroll > 0) {
+              _setPullingDownAtTop(false);
+            }
+          } else if (notification is ScrollUpdateNotification) {
+            if (notification.metrics.pixels <= 0.0 &&
+                (notification.scrollDelta ?? 0) < 0) {
+              _setPullingDownAtTop(true);
+            } else if ((notification.scrollDelta ?? 0) > 0) {
+              _setPullingDownAtTop(false);
+            }
+          } else if (notification is ScrollEndNotification) {
+            _setPullingDownAtTop(false);
+          }
+        }
+        return false;
+      },
+      child: _buildItemsListOrGrid(56.0),
+    );
+  }
+
   Widget _buildItemsListOrGrid(double topPadding) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -917,6 +954,9 @@ class _ItemsViewState extends State<ItemsView> {
 
         if (crossAxisCount == 1) {
           return ReorderableListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
             header: _buildBranding(Theme.of(context)),
             itemCount: widget.items.length,
             padding: EdgeInsets.only(bottom: 180, left: 6, right: 6),
@@ -941,6 +981,9 @@ class _ItemsViewState extends State<ItemsView> {
               (width - 24 - ((crossAxisCount - 1) * 8)) / crossAxisCount;
 
           return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
             slivers: [
               SliverToBoxAdapter(
                 child: _buildBranding(Theme.of(context)),
@@ -1046,6 +1089,11 @@ class _ItemsViewState extends State<ItemsView> {
                           : theme.colorScheme.surfaceContainerHighest)
                       .withValues(alpha: 0.30),
               child: IconButton(
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(40, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.standard,
+                ),
                 tooltip: activeFilterCount > 0
                     ? 'Filters ($activeFilterCount active)'
                     : 'Filter & View Controls',
@@ -1071,6 +1119,11 @@ class _ItemsViewState extends State<ItemsView> {
                 alpha: 0.30,
               ),
               child: IconButton(
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(40, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.standard,
+                ),
                 tooltip: 'Settings',
                 icon: const Icon(Icons.settings_outlined),
                 onPressed: widget.onOpenSettings,
@@ -1142,7 +1195,7 @@ class _ItemsViewState extends State<ItemsView> {
                 Positioned.fill(
                   child: widget.items.isEmpty
                       ? _buildEmptyState(theme, activeFilterCount)
-                      : _buildItemsListOrGrid(56.0),
+                      : _buildScrollableItemsListOrGrid(),
                 ),
                 Positioned(
                   top: 0,
@@ -1166,9 +1219,7 @@ class _ItemsViewState extends State<ItemsView> {
             width: double.infinity,
             child: Material(
               elevation: 4,
-              color: theme.colorScheme.surfaceContainerLow.withValues(
-                alpha: 0.5,
-              ),
+              color: theme.colorScheme.surfaceContainerLow,
               clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: const BorderRadius.vertical(
@@ -1234,7 +1285,7 @@ class _ItemsViewState extends State<ItemsView> {
               Positioned.fill(
                 child: widget.items.isEmpty
                     ? _buildEmptyState(theme, activeFilterCount)
-                    : _buildItemsListOrGrid(56.0),
+                    : _buildScrollableItemsListOrGrid(),
               ),
               Positioned(
                 top: 0,

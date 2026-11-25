@@ -823,11 +823,14 @@ class _HomeScreenState extends State<HomeScreen> {
         leftMargin: sidePanelOffset,
       ),
       floatingActionButton: _currentTabIndex == 0
-          ? FloatingActionButton.extended(
-              onPressed: _openAddDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Item'),
-            )
+          ? Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: FloatingActionButton.extended(
+          onPressed: _openAddDialog,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Item'),
+        ),
+      )
           : null,
     );
     return mainAppScaffold;

@@ -5,7 +5,8 @@ class ShimmerText extends StatefulWidget {
   final TextStyle? style;
   final Color baseColor;
   final Color glareColor;
-    final Color secondGlareColor;
+  final Color secondGlareColor;
+  final bool isShimmering;
 
   const ShimmerText({
     super.key,
@@ -14,6 +15,7 @@ class ShimmerText extends StatefulWidget {
     required this.glareColor,
     required this.secondGlareColor,
     this.style,
+    this.isShimmering = false,
   });
 
   @override
@@ -26,6 +28,32 @@ class _ShimmerTextState extends State<ShimmerText>
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   );
+
+  bool _isHoveredOrTapped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isShimmering) {
+      _start();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ShimmerText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isShimmering != oldWidget.isShimmering) {
+      _updateAnimationState();
+    }
+  }
+
+  void _updateAnimationState() {
+    if (widget.isShimmering || _isHoveredOrTapped) {
+      _start();
+    } else {
+      _stop();
+    }
+  }
 
   void _start() {
     if (!_controller.isAnimating) _controller.value = 0;
@@ -46,12 +74,27 @@ class _ShimmerTextState extends State<ShimmerText>
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => _start(),
-      onExit: (_) => _stop(),
+      onEnter: (_) {
+        _isHoveredOrTapped = true;
+        _updateAnimationState();
+      },
+      onExit: (_) {
+        _isHoveredOrTapped = false;
+        _updateAnimationState();
+      },
       child: GestureDetector(
-        onTapDown: (_) => _start(),
-        onTapUp: (_) => _stop(),
-        onTapCancel: _stop,
+        onTapDown: (_) {
+          _isHoveredOrTapped = true;
+          _updateAnimationState();
+        },
+        onTapUp: (_) {
+          _isHoveredOrTapped = false;
+          _updateAnimationState();
+        },
+        onTapCancel: () {
+          _isHoveredOrTapped = false;
+          _updateAnimationState();
+        },
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
