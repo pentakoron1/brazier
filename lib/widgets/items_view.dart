@@ -1166,9 +1166,7 @@ class _ItemsViewState extends State<ItemsView> {
             width: double.infinity,
             child: Material(
               elevation: 4,
-              color: theme.colorScheme.surfaceContainerLow.withValues(
-                alpha: 0.5,
-              ),
+              color: theme.colorScheme.surfaceContainerLow,
               clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: const BorderRadius.vertical(
