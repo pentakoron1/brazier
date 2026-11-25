@@ -111,7 +111,6 @@ class _BrazierAppState extends State<BrazierApp> {
       ],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: ThemeData(
-        visualDensity: VisualDensity.compact,
         useMaterial3: true,
         colorScheme: lightColorScheme,
         scaffoldBackgroundColor: lightColorScheme.surface,
@@ -130,7 +129,6 @@ class _BrazierAppState extends State<BrazierApp> {
         ),
       ),
       darkTheme: ThemeData(
-        visualDensity: VisualDensity.compact,
         useMaterial3: true,
         colorScheme: darkColorScheme,
         scaffoldBackgroundColor: darkColorScheme.surface,
