@@ -6,10 +6,8 @@ Brazier is a privacy-first, open-source Android application built with Flutter t
 
 To download the app
 ---
-  ### *!!! Be one of the first testers for Playstore*
-_If you want to be part of the first testers so that the app can be published on playstore, please join this group: https://play.google.com/apps/testing/dev.pentakoron.brazier_
-
-> We need at least 12 testers for 2 weeks to be able to publish the app, so thanks for joining!
+  ### Playstore
+Download it here: https://play.google.com/store/apps/details?id=dev.pentakoron.brazier
 
   ### Before 2027 on F-droid 
 The F-droid platform requires app to be maintained for at least 3 months before being published, that means we could get it available for everyone just before 2027!
